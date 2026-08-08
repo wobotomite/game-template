@@ -1,11 +1,14 @@
 name = "wobotomite/game_template"
 version = "0.1.0"
+private = true
 
 [target]
 environment = "roblox"
 
 [indices]
 default = "https://github.com/pesde-pkg/index"
+[wally_indices]
+default = "https://github.com/UpliftGames/wally-index"
 
 [scripts]
 roblox_sync_config_generator = ".pesde/scripts/roblox_sync_config_generator.luau"
@@ -18,3 +21,13 @@ rojo = { name = "pesde/rojo", version = "^7.5.1", target = "lune" }
 [engines]
 pesde = "^0.7.0"
 lune = "^0.10.2"
+
+[dependencies]
+sendbufs = { name = "wobotomite/sendbufs", version = "1.0.4" }
+vide = { wally = "centau/vide", version = "^0.4.1" }
+charm = { wally = "littensy/charm", version = "^0.11.0" }
+lyra = { wally = "010devx101/lyra", version = "^0.6.3" }
+greentea = { wally = "corecii/greentea", version = "^0.4.11" }
+typed-promise = { wally = "howmanysmall/typed-promise", version = "^4.0.6" }
+topbarplus = { wally = "1foreverhd/topbarplus", version = "^3.4.0" }
+charm-sync = { wally = "littensy/charm-sync", version = "^0.4.0" }

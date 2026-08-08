@@ -128,3 +128,21 @@ option = [{ name = "lukadev_0/option", version = "^1.2.1", index = "https://gith
 pathfs = [{ name = "jiwonz/pathfs", version = "^0.6.0", index = "https://github.com/pesde-pkg/index" }, "standard"]
 result = [{ name = "lukadev_0/result", version = "^1.2.1", index = "https://github.com/pesde-pkg/index" }, "peer"]
 unzip = [{ name = "0x5eal/unzip", version = "^0.2.0", index = "https://github.com/pesde-pkg/index", target = "luau" }, "standard"]
+
+[graph."wobotomite/sendbufs@1.0.4 roblox"]
+direct = ["sendbufs", { name = "wobotomite/sendbufs", version = "^1.0.4", index = "default" }, "standard"]
+
+[graph."wobotomite/sendbufs@1.0.4 roblox".pkg_ref]
+ref_ty = "pesde"
+index_url = "https://github.com/pesde-pkg/index"
+
+[graph."wobotomite/sendbufs@1.0.4 roblox".pkg_ref.dependencies]
+rojo = [{ name = "pesde/rojo", version = "^7.5.1", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
+scripts = [{ name = "pesde/scripts_rojo", version = "^0.2.0", index = "https://github.com/pesde-pkg/index", target = "lune" }, "dev"]
+
+[graph."wally#centau/vide@0.4.1 roblox"]
+direct = ["vide", { wally = "wally#centau/vide", version = "^0.4.1", index = "default" }, "standard"]
+
+[graph."wally#centau/vide@0.4.1 roblox".pkg_ref]
+ref_ty = "wally"
+index_url = "https://github.com/UpliftGames/wally-index"

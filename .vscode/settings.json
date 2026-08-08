@@ -47,8 +47,4 @@
     "stylua.targetReleaseVersion": "latest",
     "luau-lsp.completion.anonymousAutofilledFunction.addTypeAnnotations": true,
     "luau-lsp.studioPlugin.maximumRequestBodySize": "20mb",
-    "luau-lsp.types.disabledGlobals": [
-        "print",
-        "warn"
-    ],
 }
