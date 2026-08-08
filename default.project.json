@@ -1,0 +1,34 @@
+{
+  "name": "game-template",
+  "emitLegacyScripts": false,
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedFirst": {
+      "$path": "src/replicated-first"
+    },
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Util": {
+        "$path": "src/util"
+      },
+      "Client": {
+        "$path": "src/client"
+      },
+      "Packages": {
+        "$path": "roblox_packages"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}

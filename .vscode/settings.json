@@ -1,0 +1,54 @@
+{
+    "luau-lsp.ignoreGlobs": [
+        "**/_Index/**",
+        "**/.pesde/**"
+    ],
+    "luau-lsp.completion.imports.ignoreGlobs": [
+        "**/_Index/**",
+        "**/.pesde/**"
+    ],
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/*.code-search": true,
+        "**/*.rbxlx": true,
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "luau_packages": true,
+        "lune_packages": true,
+        "roblox_packages": true,
+    },
+    "[luau]": {
+        "editor.defaultFormatter": "JohnnyMorganz.stylua",
+        "editor.formatOnSave": true
+    },
+    "[lua]": {
+        "editor.defaultFormatter": "JohnnyMorganz.stylua",
+        "editor.formatOnSave": true
+    },
+    "luau-lsp.studioPlugin.enabled": true,
+    "luau-lsp.fflags.enableNewSolver": true,
+    "luau-lsp.completion.autocompleteEnd": true,
+    "luau-lsp.completion.addParentheses": false,
+    "luau-lsp.completion.imports.useConst": true,
+    "luau-lsp.completion.imports.enabled": true,
+    "luau-lsp.completion.imports.stringRequires.enabled": false,
+    "luau-lsp.completion.imports.requireStyle": "auto",
+    "luau-lsp.completion.imports.suggestRequires": true,
+    "editor.formatOnSave": true,
+    "luau-lsp.format.convertQuotes": true,
+    "luau-lsp.completion.addTabstopAfterParentheses": true,
+    "luau-lsp.completion.imports.separateGroupsWithLine": true,
+    "stylua.targetReleaseVersion": "latest",
+    "luau-lsp.completion.anonymousAutofilledFunction.addTypeAnnotations": true,
+    "luau-lsp.studioPlugin.maximumRequestBodySize": "20mb",
+    "luau-lsp.types.disabledGlobals": [
+        "print",
+        "warn"
+    ],
+}
