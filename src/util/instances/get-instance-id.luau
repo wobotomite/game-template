@@ -1,4 +1,7 @@
-const generate_id = require(script.Parent["generate-id"])
+const ReplicatedStorage = game:GetService "ReplicatedStorage"
+
+const generate_id = require(ReplicatedStorage.Util.strings["generate-id"])
+
 const ID_ATTRIBUTE = "__instance_unique_id"
 
 @native
