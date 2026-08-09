@@ -1,7 +1,7 @@
-return @native function<T>(iter: () -> T?)
-	local a: { T } = {}
-	for v in iter do
-		table.insert(a, v)
+return @native function<V, K>(iter: () -> (V, K?))
+	local a: { [K]: V } = {}
+	for k, v in iter do
+		a[k] = v
 	end
 	return a
 end

@@ -6,12 +6,12 @@ return @native function<K, V>(t: { [K]: V }, filter: (V, K) -> boolean)
 		end
 	end
 	local key, value = next(nt)
-	return function()
+	return function(): (K?, V)
 		if not key then
 			return nil
 		end
 		const ok, ov = key, value
-		key, value = next(key)
+		key, value = next(nt, key)
 		return ok, ov
 	end
 end
