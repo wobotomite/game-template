@@ -1,3 +1,4 @@
+--!nonstrict
 local fnv1a_hash
 do
 	const fnv_prime = 16777619
@@ -68,6 +69,7 @@ end
 
 local cached_fn_mt = {}
 cached_fn_mt.__index = cached_fn_mt
+
 function cached_fn_mt.rm_entry(self: CachedType, ...)
 	const hashed = hash_entry(...)
 	self.caches[hashed] = nil
@@ -101,14 +103,16 @@ type CachedType<IN... = (any), OUT... = (any)> = {
 type CachedMt<IN..., OUT...> = {
 	__index: CachedMt<IN..., OUT...>,
 	__call: (IN...) -> OUT...,
-	clear: (self: CachedMt<IN..., OUT...>) -> (),
-	rm_entry: (self: CachedMt<IN..., OUT...>,...) -> (),
+	clear: (self: CachedType<IN..., OUT...>) -> (),
+	rm_entry: (self: CachedType<IN..., OUT...>, IN...) -> (),
 }
-
-export type CachedObject<IN... = (any), OUT... = (any)> = setmetatable<CachedType<IN...,OUT...>,CachedMt<IN...,OUT...>>
+export type CachedObject<IN... = (any), OUT... = (any)> = setmetatable<
+	CachedType<IN..., OUT...>,
+	CachedMt<IN..., OUT...>
+>
 
 -- @ ONLY USE FOR DETERMINISTIC FUNCTIONS
-function cached<I..., O...>(fn: (I...) -> O..., memorize_for: number?):CachedObject<I...,O...>
+function cached<I..., O...>(fn: (I...) -> O..., memorize_for: number?): CachedObject<I..., O...>
 	return setmetatable({ caches = {}, memorize_for = memorize_for, fn = fn }, cached_fn_mt) :: never
 end
 
