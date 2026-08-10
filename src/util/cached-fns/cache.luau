@@ -66,22 +66,50 @@ local function deep_copy<T>(original: {} & T)
 	return copy
 end
 
--- @ ONLY USE FOR DETERMINISTIC FUNCTIONS
-function cached<I..., O...>(fn: (I...) -> O..., memorize_for: number?)
-	const caches = {}
-	return function(...: I...): O...
-		const hashed = hash_entry(...)
-		const found = caches[hashed]
-		if found and (not memorize_for or (os.clock() - found.ran_at) < memorize_for) then
-			return unpack(deep_copy(caches[hashed].result))
-		end
-		const result = { fn(...) }
-		caches[hashed] = {
-			ran_at = os.clock(),
-			result = result,
-		}
-		return unpack(deep_copy(result))
+local cached_fn_mt = {}
+cached_fn_mt.__index = cached_fn_mt
+function cached_fn_mt.rm_entry(self: CachedType, ...)
+	const hashed = hash_entry(...)
+	self.caches[hashed] = nil
+end
+function cached_fn_mt.clear(self: CachedType)
+	table.clear(self.caches)
+end
+function cached_fn_mt.__call(self: CachedType, ...)
+	const memorize_for = self.memorize_for
+	const caches = self.caches
+	const fn = self.fn
+
+	const hashed = hash_entry(...)
+	const found = caches[hashed]
+	if found and (not memorize_for or (os.clock() - found.ran_at) < memorize_for) then
+		return table.unpack(deep_copy(caches[hashed].result))
 	end
+	const result = { fn(...) }
+	caches[hashed] = {
+		ran_at = os.clock(),
+		result = result,
+	}
+	return unpack(deep_copy(result))
+end
+
+type CachedType<IN... = (any), OUT... = (any)> = {
+	caches: { [string]: any },
+	memorize_for: number?,
+	fn: (IN...) -> OUT...,
+}
+type CachedMt<IN..., OUT...> = {
+	__index: CachedMt<IN..., OUT...>,
+	__call: (IN...) -> OUT...,
+	clear: (self: CachedMt<IN..., OUT...>) -> (),
+	rm_entry: (self: CachedMt<IN..., OUT...>,...) -> (),
+}
+
+export type CachedObject<IN... = (any), OUT... = (any)> = setmetatable<CachedType<IN...,OUT...>,CachedMt<IN...,OUT...>>
+
+-- @ ONLY USE FOR DETERMINISTIC FUNCTIONS
+function cached<I..., O...>(fn: (I...) -> O..., memorize_for: number?):CachedObject<I...,O...>
+	return setmetatable({ caches = {}, memorize_for = memorize_for, fn = fn }, cached_fn_mt) :: never
 end
 
 return cached
