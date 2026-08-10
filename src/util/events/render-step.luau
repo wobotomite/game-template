@@ -6,7 +6,7 @@ const signals = setmetatable({}, { __mode = "k" })
 RunService.RenderStepped:Connect(function(a0: number)
 	for signal, data in signals do
 		data.counter += a0
-		if data.counter > data.rate then
+		if not data.rate or data.counter >= data.rate then
 			const c = data.counter
 			data.counter = 0
 			signal:fire(c)

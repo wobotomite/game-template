@@ -1,9 +1,13 @@
+const ReplicatedStorage = game:GetService "ReplicatedStorage"
+
+const count_map = require(ReplicatedStorage.Util.tables["count-map"])
 const pseudo_connection = {}
 pseudo_connection.__index = pseudo_connection
 
 type EventMt<IN...> = {
 	connect: (self: EventMt<IN...>, fn: (IN...) -> ()) -> () -> (),
 	fire: (self: EventMt<IN...>, IN...) -> (),
+	count: (self: EventMt<IN...>) -> number,
 }
 
 type EventType<IN...> = setmetatable<{
@@ -17,13 +21,17 @@ function pseudo_connection.connect<T>(self, cb: () -> ())
 	end
 end
 
+function pseudo_connection.count(self)
+	return count_map(self.__listeners)
+end
+
 function pseudo_connection.new<T>(): EventType<T>
 	return setmetatable({ __listeners = {} }, pseudo_connection)
 end
 
 function pseudo_connection.fire(self, ...)
 	for fn in self.__listeners do
-		task.defer(fn, ...)
+		task.spawn(fn, ...)
 	end
 end
 
