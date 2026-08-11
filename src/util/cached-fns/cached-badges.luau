@@ -1,5 +1,4 @@
 const BadgeService = game:GetService "BadgeService"
-const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
 const cache_function = require(script.Parent["cache-function"])
 
