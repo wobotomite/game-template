@@ -14,7 +14,7 @@ RunService.PostSimulation:Connect(function(a0: number)
 	end
 end)
 
-return function(rate: number)
+return function(rate: number?)
 	const ns = pseudo_signal.new<<number>>()
 	signals[ns] = { rate = rate, counter = 0 }
 	return ns
