@@ -7,7 +7,7 @@ return @native function<K, V, NV, NK>(t: { [K]: V }, map: (V, K) -> (NV, NK?))
 	end
 	local key, value = next(nt)
 
-	return function()
+	return function(): (NK?, NV)
 		if not key then
 			return nil
 		end
