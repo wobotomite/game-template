@@ -24,6 +24,7 @@ function solve_me(i: BasePart, old_pos: CFrame, target_pos: CFrame, delay_time: 
 	}
 end
 
+const bulk_move_to = workspace.BulkMoveTo
 on_shutdown(render_step():connect(function(a0: number)
 	local parts, cfs = {}, {}
 	for i, v in to_solve do
@@ -47,7 +48,7 @@ on_shutdown(render_step():connect(function(a0: number)
 			to_solve[i] = nil
 		end
 	end
-	workspace:BulkMoveTo(parts, cfs)
+	bulk_move_to(workspace, parts, cfs)
 end))
 
 @native

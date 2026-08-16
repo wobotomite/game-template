@@ -1,3 +1,6 @@
+const sqrt = math.sqrt
+const pow = math.pow
+
 return @native function(v: Vector3): number
-	return math.sqrt(math.pow(v.X, 2) + math.pow(v.Y, 2))
+	return sqrt(pow(v.X, 2) + pow(v.Y, 2))
 end

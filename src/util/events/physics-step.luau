@@ -2,7 +2,7 @@ const RunService = game:GetService "RunService"
 
 const pseudo_signal = require(script.Parent["pseudo-signal"])
 
-const signals = setmetatable({}, { __mode = "k" })
+const signals = {}
 RunService.PostSimulation:Connect(function(a0: number)
 	for signal, data in signals do
 		data.counter += a0
@@ -16,6 +16,10 @@ end)
 
 return function(rate: number?)
 	const ns = pseudo_signal.new<<number>>()
-	signals[ns] = { rate = rate, counter = 0 }
-	return ns
+	signals[ns] = { rate = rate, counter = rate }
+	return setmetatable({
+		destroy = function(self)
+			signals[getmetatable(self).__index] = nil
+		end,
+	}, { __index = ns })
 end

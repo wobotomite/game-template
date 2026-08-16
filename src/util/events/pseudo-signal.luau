@@ -7,6 +7,7 @@ pseudo_connection.__index = pseudo_connection
 type EventMt<IN...> = {
 	connect: (self: EventMt<IN...>, fn: (IN...) -> ()) -> () -> (),
 	fire: (self: EventMt<IN...>, IN...) -> (),
+	wait: (self: EventMt<IN...>) -> IN...,
 	count: (self: EventMt<IN...>) -> number,
 }
 
@@ -19,6 +20,19 @@ function pseudo_connection.connect<T>(self, cb: () -> ())
 	return function()
 		self.__listeners[cb] = nil
 	end
+end
+
+function pseudo_connection.wait(self)
+	const coro = coroutine.running()
+	local c
+	c = self:connect(function(...)
+		c()
+		if coroutine.status(coro) ~= "suspended" then
+			return
+		end
+		coroutine.resume(coro, ...)
+	end)
+	return coroutine.yield()
 end
 
 function pseudo_connection.count(self)
