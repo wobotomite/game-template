@@ -5,11 +5,11 @@ const render_step = require(ReplicatedStorage.Util.events["render-step"])
 const pseudo_signal = require(ReplicatedStorage.Util.events["pseudo-signal"])
 
 const types = require(script.types)
-const fab_track = require(script.tracks.fab)
-const tween_track = require(script.tracks.tween)
-const animation_track = require(script.tracks.animation)
-const sound_track = require(script.tracks.sound)
-const custom_track = require(script.tracks.custom)
+const fab_track = require(script.tracks["track-fab"])
+const tween_track = require(script.tracks["track-tween"])
+const animation_track = require(script.tracks["track-animation"])
+const sound_track = require(script.tracks["track-sound"])
+const custom_track = require(script.tracks["track-custom"])
 
 assert(RunService:IsClient(), "CAN ONLY BE RUN ON THE CLIENT!")
 

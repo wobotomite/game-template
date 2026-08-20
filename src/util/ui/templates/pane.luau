@@ -12,6 +12,6 @@ return function(props: ui_types.VideProperties<"Frame">)
 		AutomaticSize = if props.Size then nil else Enum.AutomaticSize.XY,
 	}
 
-	vide.apply(frame, props)
+	vide.apply(frame)(props)
 	return frame
 end
