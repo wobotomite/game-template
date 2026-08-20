@@ -1,6 +1,7 @@
 const Players = game:GetService "Players"
 
-const __create_observer = require(script.Parent.__create_observer)
+const __create_observer = require(script.Parent["__create-observer"])
+
 @native
 function observe_players(callback: (Player) -> __create_observer.Cleanup): __create_observer.Cleanup
 	return __create_observer(function(observer: __create_observer.Observer<Player>)

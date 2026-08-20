@@ -3,7 +3,6 @@ const RunService = game:GetService "RunService"
 const TweenService = game:GetService "TweenService"
 
 const render_step = require(ReplicatedStorage.Util.events["render-step"])
-const on_shutdown = require(ReplicatedStorage.Util.game["on-shutdown"])
 
 type TweenType = {
 	i: Instance,
@@ -18,7 +17,7 @@ type TweenType = {
 }
 local tweens: { [Instance]: TweenType } = {}
 
-on_shutdown(render_step():connect(function(a0: number)
+render_step():connect(function(a0: number)
 	for i, v in tweens do
 		v.elapsed += a0
 		if v.elapsed > v.time then
@@ -29,7 +28,7 @@ on_shutdown(render_step():connect(function(a0: number)
 		const dt = TweenService:GetValue(t, v.style, v.direction)
 		task.spawn(v.tween_fn, math.lerp(v.start_value, v.end_value, dt))
 	end
-end))
+end)
 
 function end_tween(i: Instance)
 	const obj = tweens[i]

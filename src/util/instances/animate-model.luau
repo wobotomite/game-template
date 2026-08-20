@@ -1,7 +1,6 @@
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
 const RunService = game:GetService "RunService"
 const render_step = require(ReplicatedStorage.Util.events["render-step"])
-const on_shutdown = require(ReplicatedStorage.Util.game["on-shutdown"])
 const map_table = require(ReplicatedStorage.Util.iterators["map-table"])
 const bezier = require(ReplicatedStorage.Util.numbers.bezier)
 
@@ -25,7 +24,7 @@ function solve_me(i: BasePart, old_pos: CFrame, target_pos: CFrame, delay_time: 
 end
 
 const bulk_move_to = workspace.BulkMoveTo
-on_shutdown(render_step():connect(function(a0: number)
+render_step():connect(function(a0: number)
 	local parts, cfs = {}, {}
 	for i, v in to_solve do
 		v.t += (a0 * v.speed)
@@ -49,7 +48,7 @@ on_shutdown(render_step():connect(function(a0: number)
 		end
 	end
 	bulk_move_to(workspace, parts, cfs)
-end))
+end)
 
 @native
 function animate_model(static_model: Model, start_cframe: CFrame, end_cframe: CFrame)
@@ -74,7 +73,7 @@ function animate_model(static_model: Model, start_cframe: CFrame, end_cframe: CF
 
 	for i, v in descendant_positions do
 		delay_time += (SOLVE_TIME / total_count)
-		solve_me(i, start_cframe * v, end_cframe * v, delay_time)
+		solve_me(i, start_cframe, end_cframe * v, delay_time)
 	end
 
 	return clone, SOLVE_TIME + delay_time
