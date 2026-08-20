@@ -1,9 +1,12 @@
-const ReplicatedStorage = game:GetService "ReplicatedStorage"
-
-const print = require(ReplicatedStorage.Shared.util.logger.print)
-const warn = require(ReplicatedStorage.Shared.util.logger.warn)
+const RunService = game:GetService "RunService"
 
 const util = require(script.util)
+
+if RunService:IsServer() then
+	workspace:RegisterCollisionGroup "RagdollColliders"
+	workspace:CollisionGroupSetCollidable("RagdollColliders", "RagdollColliders", false)
+end
+
 type RagdollObject = {
 	rig: Model,
 	colliders: { BasePart },

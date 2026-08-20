@@ -32,6 +32,9 @@ end
 @native
 function clear_colliders(colliders: { BasePart })
 	for i, v in colliders do
+		if v.Parent:IsA "BasePart" then
+			v.Parent.CanCollide = true
+		end
 		v:Destroy()
 	end
 	table.clear(colliders)
@@ -42,7 +45,10 @@ function create_collider_part(part: BasePart): Part
 	const p = Instance.new "Part"
 	p.CollisionGroup = "RagdollColliders"
 	p.Name = collider_part_name
-	p.Size = part.Size / 1.7
+	p.Size = part.Size * 0.6
+	if p.Name == "Head" then
+		p.Size = Vector3.one
+	end
 	p.Massless = true
 	p.Archivable = false
 	p.CanCollide = true
@@ -54,6 +60,7 @@ function create_collider_part(part: BasePart): Part
 
 	weld.Part1 = part
 	p.Parent = part
+	part.CanCollide = false
 	return p
 end
 
@@ -74,7 +81,7 @@ end
 function ragdoll_weld_root(rig: Model)
 	assert(rig.PrimaryPart, "no primary part found")
 	assert(rig.PrimaryPart:FindFirstChild(root_weld_name) == nil, "already welded root")
-	for i, joint in rig:QueryDescendants "Motor6D#RootJoint" do
+	for i, joint in rig:QueryDescendants "Motor6D#RootJoint,Motor6D#Root" do
 		const Weld = Instance.new "Weld"
 		Weld.Name = root_weld_name
 		Weld.Enabled = false
@@ -102,7 +109,7 @@ function build_sockets_from_joint_map(jointMap: { Motor6D })
 		const socket = Instance.new "BallSocketConstraint"
 		socket.Name = "ragdoll-ball-socket ->" .. v.Name
 		socket.Enabled = false
-		socket.LimitsEnabled = true
+		--socket.LimitsEnabled = true
 		socket.TwistLimitsEnabled = true
 		socket.Attachment0 = a0
 		socket.Attachment1 = a1
