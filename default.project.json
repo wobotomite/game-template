@@ -16,6 +16,9 @@
       "Client": {
         "$path": "src/client"
       },
+      "Effects": {
+        "$path": "src/effects"
+      },
       "Packages": {
         "$path": "roblox_packages"
       }

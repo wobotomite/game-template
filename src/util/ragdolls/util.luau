@@ -1,5 +1,7 @@
 const collider_part_name = "ragdoll-collider-part"
 const root_weld_name = "ragdoll-root-weld"
+-- Read back out by the parent module, which owns the collidable matrix.
+const ragdoll_group = "RagdollColliders"
 export type SocketMapValue = {
 	parent: Motor6D,
 	socket: BallSocketConstraint,
@@ -32,8 +34,13 @@ end
 @native
 function clear_colliders(colliders: { BasePart })
 	for i, v in colliders do
-		if v.Parent:IsA "BasePart" then
-			v.Parent.CanCollide = true
+		-- Parent can be NIL, not just a non-BasePart: a collider whose host
+		-- part was destroyed (character despawned mid-ragdoll, a limb removed)
+		-- is still in this list, and indexing nil threw out of the teardown --
+		-- which left every remaining collider in place and the ragdoll stuck.
+		const host = v.Parent
+		if host and host:IsA "BasePart" then
+			host.CanCollide = true
 		end
 		v:Destroy()
 	end
@@ -43,10 +50,12 @@ end
 @native
 function create_collider_part(part: BasePart): Part
 	const p = Instance.new "Part"
-	p.CollisionGroup = "RagdollColliders"
+	p.CollisionGroup = ragdoll_group
 	p.Name = collider_part_name
 	p.Size = part.Size * 0.6
-	if p.Name == "Head" then
+	-- `part.Name`, not `p.Name`: p was renamed to collider_part_name two lines
+	-- up, so this test could never be true and heads never got their override.
+	if part.Name == "Head" then
 		p.Size = Vector3.one
 	end
 	p.Massless = true
@@ -123,6 +132,7 @@ end
 return table.freeze {
 	build_sockets_from_joint_map = build_sockets_from_joint_map,
 	root_weld_name = root_weld_name,
+	ragdoll_group = ragdoll_group,
 	ragdoll_weld_root = ragdoll_weld_root,
 	create_colliders = create_colliders,
 	clear_colliders = clear_colliders,

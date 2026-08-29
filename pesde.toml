@@ -31,3 +31,5 @@ greentea = { wally = "corecii/greentea", version = "^0.4.11" }
 typed-promise = { wally = "howmanysmall/typed-promise", version = "^4.0.6" }
 topbarplus = { wally = "1foreverhd/topbarplus", version = "^3.4.0" }
 charm-sync = { wally = "littensy/charm-sync", version = "^0.4.0" }
+# required by util/ui/hooks/use-motion and use-tween
+ripple = { wally = "littensy/ripple", version = "^0.6.0" }

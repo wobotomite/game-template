@@ -95,14 +95,15 @@ function redistribute_by_luck(weights: { number }, luck: number): ({ number }, n
 	return adjusted, sum
 end
 
-function sample<T>(aliasTable: LookupTable<T>, luck: number?): keyof<T>
+function sample<T>(aliasTable: LookupTable<T>, luck: number?, random: Random?): keyof<T>
+	const r = random or rng
 	local result: number
 	if luck == nil or luck == 1 then
-		const rand = rng:NextInteger(1, aliasTable.num_weights)
-		result = if rng:NextNumber() < aliasTable.prob[rand] then rand else aliasTable.alias[rand]
+		const rand = r:NextInteger(1, aliasTable.num_weights)
+		result = if r:NextNumber() < aliasTable.prob[rand] then rand else aliasTable.alias[rand]
 	else
 		const adjusted, sum = redistribute_by_luck(aliasTable.weights, luck)
-		const roll = rng:NextNumber() * sum
+		const roll = r:NextNumber() * sum
 		local cumulative = 0
 		result = aliasTable.num_weights
 		for i, weight in adjusted do

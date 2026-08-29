@@ -30,7 +30,7 @@ function client(message: string, sound_id: string?)
 end
 
 if RunService:IsServer() then
-	local network = require(ServerScriptService.Server["server-network"])
+	local network = require(ServerScriptService.Server.net["server-network"])
 	function send_to(p: Player, message: string, sound_id: string?)
 		network.core.send_alert:fire(p, {
 			message = message,
@@ -44,7 +44,7 @@ if RunService:IsServer() then
 		}
 	end
 else
-	local network = require(ReplicatedStorage.Client["client-network"])
+	local network = require(ReplicatedStorage.Client.net["client-network"])
 	network.core.send_alert:connect(function(a0: {} & { message: string, sound: string? })
 		client(a0.message, a0.sound)
 	end)

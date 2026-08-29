@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService "ReplicatedStorage"
 
-local alert = require(ReplicatedStorage.Shared.alert)
+local alert = require(ReplicatedStorage.Shared.services.alert)
 local px = require(ReplicatedStorage.Util.ui.hooks.px)
 local use_atom = require(ReplicatedStorage.Util.ui.hooks["use-atom"])
 local vide = require(ReplicatedStorage.Packages.vide)

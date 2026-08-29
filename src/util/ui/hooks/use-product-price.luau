@@ -1,7 +1,7 @@
 const MarketplaceService = game:GetService "MarketplaceService"
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
-const promise = require(ReplicatedStorage.Packages.promise)
+const promise = require(ReplicatedStorage.Packages["typed-promise"])
 const vide = require(ReplicatedStorage.Packages.vide)
 
 return function(product_id: number, info_type: Enum.InfoType)

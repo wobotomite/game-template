@@ -7,5 +7,8 @@
 rojo = "rojo-rbx/rojo@7.7.0"
 asphalt = "jacktabscode/asphalt@2.0.2"
 StyLua = "JohnnyMorganz/StyLua@2.5.2"
+# The analyzer. Not having it here is why `~/.rokit/bin/luau-lsp` failed and
+# every typecheck had to be run through a hand-written path into tool-storage.
+luau-lsp = "JohnnyMorganz/luau-lsp@1.68.1"
 lune = "lune-org/lune@0.10.5"
 pesde = "pesde-pkg/pesde@0.7.3+registry.0.2.3"

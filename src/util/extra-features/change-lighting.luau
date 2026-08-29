@@ -2,9 +2,9 @@ const Lighting = game:GetService "Lighting"
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
 const TweenService = game:GetService "TweenService"
 
-const constants = require(ReplicatedStorage.Shared.constants)
+const tags = require(ReplicatedStorage.Shared.records.tags)
 
-const IGNORE_TAG = constants.tags.lighting_engine_ignore
+const IGNORE_TAG = tags.LIGHTING_ENGINE_IGNORE
 
 const WHITELISTED_CLASSES = {
 	"Atmosphere",
@@ -109,7 +109,20 @@ function create_blank_instance(class_name: string, parent: Instance): Instance?
 	instance.Parent = parent
 	return instance
 end
-const did_fade_out = setmetatable({}, { __mode = "k" }) :: { [Instance]: boolean }
+-- WRITTEN AND NEVER READ. `fade_out` sets a flag here and nothing in this
+-- module (or any other) consults it -- a half-finished idea left standing.
+--
+-- It is kept rather than removed, with STRONG keys, because the weak version
+-- was a trap for whoever eventually wires up the read: in Roblox an Instance's
+-- Lua-side wrapper is collectable whenever nothing on the Lua side holds it
+-- strongly, whatever the DataModel thinks, so a weak-keyed entry for a live,
+-- parented instance is dropped on the first GC cycle. Measured elsewhere in
+-- this tree: 0 of 40 entries survived. The same mistake in util/ragdolls froze
+-- corpses upright, and the symptom pointed nowhere near the table.
+--
+-- The set is bounded (one entry per lighting instance the engine has), so
+-- strong keys cost nothing here.
+const did_fade_out: { [Instance]: boolean } = {}
 function fade_out(instance: Instance?)
 	if not instance then
 		return

@@ -8,7 +8,7 @@ return @native function<T>(k: string, default: T?)
 		end,
 		name = k,
 		on_changed = function(i: Instance)
-			return i:GetPropertyChangedSignal(k)
+			return i:GetAttributeChangedSignal(k)
 		end,
 	}
 end

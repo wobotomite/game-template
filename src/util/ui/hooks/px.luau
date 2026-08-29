@@ -3,8 +3,6 @@ const ReplicatedStorage = game:GetService "ReplicatedStorage"
 const Vide = require(ReplicatedStorage.Packages.vide)
 
 local cleanup = Vide.cleanup
-local derive = Vide.derive
-local effect = Vide.deferred
 local source = Vide.source
 
 local BASE_RESOLUTION = Vector2.new(1280, 832)
@@ -36,29 +34,49 @@ local function modifyScale(scale: number): number
 	return math.max(math.round(scale * 10) / 10, MIN_SCALE)
 end
 
+-- Computed outside the vide graph: setting `currentScale` inside a vide
+-- effect is a recursive source update (vide 0.4 has no deferred effects).
+local function recomputeScale()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local viewport = camera.ViewportSize
+	if viewport.X <= 0 or viewport.Y <= 0 then
+		return
+	end
+	local constrainedAspectRatio = math.min(viewport.X / viewport.Y, 16 / 9)
+	local constrained = Vector2.new(viewport.Y * constrainedAspectRatio, viewport.Y)
+
+	local scaleX = math.log(constrained.X / BASE_RESOLUTION.X, 2)
+	local scaleY = math.log(constrained.Y / BASE_RESOLUTION.Y, 2)
+	const centered = scaleX + (scaleY - scaleX) * DOMINANT_AXIS
+
+	currentScale(modifyScale(math.max(2 ^ centered, MIN_SCALE)))
+end
+
 local function usePx()
-	local viewportSize = source(Vector2.new(0, 0))
-	local getConstrainedViewportSize = derive(function()
-		local viewport = viewportSize()
-		local constrainedAspectRatio = math.min(viewport.X / viewport.Y, 16 / 9)
-		return Vector2.new(viewport.Y * constrainedAspectRatio, viewport.Y)
+	-- CurrentCamera is replaced on death/respawn; re-hook so viewport
+	-- listening survives the swap instead of dying with the old camera.
+	local viewportConnection: RBXScriptConnection? = nil
+	local function hookCamera()
+		if viewportConnection then
+			viewportConnection:Disconnect()
+			viewportConnection = nil
+		end
+		const camera = workspace.CurrentCamera
+		if camera then
+			viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(recomputeScale)
+		end
+		recomputeScale()
+	end
+	cleanup(workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(hookCamera))
+	cleanup(function()
+		if viewportConnection then
+			viewportConnection:Disconnect()
+		end
 	end)
-
-	effect(function()
-		local viewport = getConstrainedViewportSize()
-		local scaleX = math.log(viewport.X / BASE_RESOLUTION.X, 2)
-		local scaleY = math.log(viewport.Y / BASE_RESOLUTION.Y, 2)
-
-		const centered = scaleX + (scaleY - scaleX) * DOMINANT_AXIS
-
-		currentScale(modifyScale(math.max(2 ^ centered, MIN_SCALE)))
-	end)
-
-	cleanup(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-		viewportSize(workspace.CurrentCamera.ViewportSize)
-	end))
-
-	task.defer(viewportSize, workspace.CurrentCamera.ViewportSize)
+	task.defer(hookCamera)
 end
 
 local function setScale(scale: number)

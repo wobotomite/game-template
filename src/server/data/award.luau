@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService "ReplicatedStorage"
 
-local alert = require(ReplicatedStorage.Shared.alert)
+local alert = require(ReplicatedStorage.Shared.services.alert)
 local currencies = require(ReplicatedStorage.Shared.records.currencies)
 local humanize_reward = require(ReplicatedStorage.Shared["item-util"]["humanize-reward"])
 local parse_reward = require(ReplicatedStorage.Shared["item-util"]["parse-reward"])

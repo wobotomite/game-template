@@ -1,9 +1,12 @@
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
-const clickable = require(ReplicatedStorage.Client.ui.traits.clickable)
-const pane = require(ReplicatedStorage.Client.ui.traits.pane)
-const sound = require(ReplicatedStorage.Shared.util.sound)
-const use_motion = require(ReplicatedStorage.Client.ui.hooks["use-motion"])
+-- These four requires pointed at ReplicatedStorage.Client.ui.traits /
+-- Shared.util for a long time -- paths that exist in no project built from
+-- this template, so requiring this module threw at the first line of any game
+-- that reached for it. The templates and hooks live under Util.ui.
+const clickable = require(ReplicatedStorage.Util.ui.templates.clickable)
+const pane = require(ReplicatedStorage.Util.ui.templates.pane)
+const use_motion = require(ReplicatedStorage.Util.ui.hooks["use-motion"])
 const vide = require(ReplicatedStorage.Packages.vide)
 const ui_types = require(ReplicatedStorage.Util.ui["ui-types"])
 
@@ -14,6 +17,7 @@ function carousel_item(props: {
 	SelectedIndex: vide.Source<number>,
 	MaxDisplay: number?,
 	OnClick: () -> (),
+	OnClickSound: (() -> ())?,
 } & { [any]: any })
 	const options = { frequency = 6, dampingRatio = 1.5 }
 	const index_pos, index_pos_motion = use_motion(vide.read(props.Index) - props.SelectedIndex())
@@ -45,7 +49,15 @@ function carousel_item(props: {
 		clickable {
 			OnClick = function()
 				props.OnClick()
-				sound.client("sound/whoosh", { volume = 0.05 })
+				-- The click cue is INJECTED rather than required. This module
+				-- used to reach into a `Shared.util.sound` that no project has,
+				-- which is the whole reason it never loaded; a template has no
+				-- business knowing a game's sound record or its playback
+				-- helper.
+				const cue = props.OnClickSound
+				if cue then
+					cue()
+				end
 			end,
 		},
 		vide.create "UIScale" {
@@ -56,21 +68,31 @@ function carousel_item(props: {
 	}
 end
 
-return function<T>(props: {
-	AnchorPoint: Vector2?,
-	Position: ui_types.UsedAs<UDim2>?,
-	Size: ui_types.UsedAs<UDim2>?,
-	ItemSize: ui_types.UsedAs<UDim2>,
-	Padding: ui_types.UsedAs<number>,
-	SelectedIndex: number?,
-	DisplayCount: number?,
-	OnSelectedChanged: ((index: number) -> ())?,
-	Provider: (() -> { T }) | { T },
-	Consumer: (value: T, index: () -> number) -> Instance,
-})
+return function<T>(
+	props: {
+		AnchorPoint: Vector2?,
+		Position: ui_types.UsedAs<UDim2>?,
+		Size: ui_types.UsedAs<UDim2>?,
+		ItemSize: ui_types.UsedAs<UDim2>,
+		Padding: ui_types.UsedAs<number>,
+		SelectedIndex: number?,
+		DisplayCount: number?,
+		OnSelectedChanged: ((index: number) -> ())?,
+		-- Played on every item click. Wire your game's own cue in here.
+		OnClickSound: (() -> ())?,
+		Provider: (() -> { T }) | { T },
+		Consumer: (value: T, index: () -> number) -> Instance,
+	}
+)
+	const items: () -> { T } = if type(props.Provider) == "function"
+		then props.Provider :: () -> { T }
+		else function()
+			return props.Provider :: { T }
+		end
+
 	const selected = vide.source(props.SelectedIndex or 0)
 	vide.effect(function(): ()
-		selected(math.clamp(#(vide.read(props.Provider) :: any), 0, selected()))
+		selected(math.clamp(#items(), 0, selected()))
 	end)
 	vide.effect(function()
 		if props.OnSelectedChanged then
@@ -84,9 +106,14 @@ return function<T>(props: {
 		AnchorPoint = props.AnchorPoint,
 		Size = props.Size or UDim2.fromScale(1, 1),
 		ClipsDescendants = true,
-		vide.for_values(props.Provider, function(v: T, k: () -> number): Instance?
+		-- vide.for_values does not exist in vide 0.4 -- the iterator is
+		-- `vide.values`, and it takes a SOURCE, so a provider handed in as a
+		-- plain array has to be wrapped. Both halves of this were wrong, and
+		-- both only ever showed up at the moment a carousel was first rendered.
+		vide.values(items, function(v: T, k: () -> number): Instance?
 			return carousel_item {
 				MaxDisplay = props.DisplayCount,
+				OnClickSound = props.OnClickSound,
 				Padding = props.Padding,
 				Index = k,
 				Size = props.ItemSize,
