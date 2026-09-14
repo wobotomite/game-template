@@ -216,13 +216,72 @@ type Creatable = {
 -- `util/tables/const-record`. Only Studio evaluates these. A property table
 -- showing as `*error-type*` in an editor is the expected luau-lsp result and
 -- says nothing about whether the checking works in Studio.
+-- ENUM PROPERTIES ARE WIDENED TO `EnumItem | string`, so a call site may pass
+-- the enum's NAME:
+--
+--   create("Part", { Material = "Neon" })              -- accepted
+--   create("Part", { Material = Enum.Material.Neon })  -- also accepted
+--
+-- The engine already takes either at runtime -- assigning a string to an
+-- Enum-typed property resolves it by name and raises on a name no enum has --
+-- so the narrow type was rejecting something that works. It cost the most on
+-- property tables built from DATA, which is the case this module exists for: a
+-- config table cannot hold an `Enum.Material`, so every such site had to
+-- convert by hand or cast, and one cast there discards the checking on all the
+-- OTHER keys too.
+--
+-- WHAT IT GIVES UP, SAID PLAINLY: a misspelled enum name is no longer a type
+-- error, because the widened type accepts any string. It fails at the write
+-- instead, loudly and with the property named. That is a worse check than
+-- before for the one case, and a better one than the cast it replaces.
+--
+-- `probe` wraps every `types` call the enum test makes, and that is not
+-- defensive padding: a type function that THROWS renders everything it produces
+-- as `*error-type*`, so one unexpected shape in the reflection data would take
+-- the whole property table down -- indistinguishable, from the editor, from the
+-- checking simply not working. `is_enum` walks parents rather than comparing
+-- against one type because the individual enum types sit beneath a shared
+-- `EnumItem` ancestor, and the 16-step bound is a cycle guard: a malformed
+-- chain would otherwise spin inside the analyser with nothing to interrupt it.
 type function PropertiesOfInstance(instance: type?)
 	const properties = types.newtable()
+
+	const function probe(fn): any
+		const ok, result = pcall(fn)
+		return if ok then result else nil
+	end
+
+	const function is_enum(t): boolean
+		local node = t
+		for _ = 1, 16 do
+			if node == nil then
+				return false
+			end
+			if probe(function()
+				return node:name()
+			end) == "EnumItem" then
+				return true
+			end
+			node = probe(function()
+				return node:parent()
+			end)
+		end
+		return false
+	end
 
 	while instance do
 		for key, prop in instance:properties() do
 			if prop.write then
-				properties:setproperty(key, types.optional(prop.write))
+				local write = prop.write
+				if is_enum(write) then
+					const widened = probe(function()
+						return types.unionof(write, types.string)
+					end)
+					if widened ~= nil then
+						write = widened
+					end
+				end
+				properties:setproperty(key, types.optional(write))
 			end
 		end
 		instance = instance:readparent()

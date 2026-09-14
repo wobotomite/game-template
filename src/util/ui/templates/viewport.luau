@@ -20,12 +20,23 @@ export type ViewportProps = {
 	-- model to the frame's VERTICAL fov, so a wide, short frame leaves the
 	-- model looking tiny — pull the camera in to fill it.
 	Zoom: number?,
+	-- The camera to render the frame with. Supply one and the CALLER owns the
+	-- framing -- an orbit the player can drag, a camera shared between two
+	-- previews, a shot that tracks an animating model -- and `Orbit` and `Zoom`
+	-- are ignored, because the one-shot fit below would fight the caller for the
+	-- CFrame and win on the frame the ViewportFrame mounts.
+	--
+	-- Left nil, the template makes its own camera and aims it at the model ONCE,
+	-- which is the behaviour every existing call site depends on.
+	Camera: Camera?,
 	Ambient: Color3?,
 	LightColor: Color3?,
 }
 
 return function(props: ViewportProps)
-	local camera = Instance.new "Camera"
+	local camera = props.Camera or Instance.new "Camera"
+	-- Captured from the PROP, not from `camera`: `camera` is non-nil either way.
+	local framed = props.Camera ~= nil
 	local orbit = props.Orbit or Vector3.new(1, 0.3, -4)
 	local zoom = props.Zoom or 1
 
@@ -47,6 +58,11 @@ return function(props: ViewportProps)
 			props.Model,
 			camera,
 			vide.action(function()
+				-- A caller-supplied camera is already pointed where the caller
+				-- wants it; re-framing here would snap it back on mount.
+				if framed then
+					return
+				end
 				local pivot = props.Model:GetPivot().Position
 				camera.CFrame = CFrame.lookAt(pivot + orbit, pivot)
 				zoom_to_extents(camera, props.Model)

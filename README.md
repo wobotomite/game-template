@@ -23,7 +23,7 @@ scripts/analyze.sh --counts  # per-file diagnostic counts, for diffing
 | Path | What lives there |
 | --- | --- |
 | `src/shared` | Code both realms need: `services/` (data, sync, appearance, alerts), `world/` (model layout, raycast filters), `records/`, plus the wire and place context. |
-| `src/util` | The toolbox. Observers, signals, step dispatch, tweens, UI hooks and templates, colours, tables. **Zero references is not dead code** — this is a library, not application code, and the next game uses a different third of it. |
+| `src/util` | The toolbox. Observers (including `observers/observe-rig` for a character whose parts stream in late), signals, step dispatch, tweens, UI hooks and templates, colours, tables, numbers (`numbers/approach` for frame-rate-independent easing), strings (`strings/escape-rich-text` for player-supplied text in RichText labels), `ui/screen-metrics` (topbar and safe-zone inset, thumbstick and accessibility readings, plus one padding table that clears all of them). **Zero references is not dead code** — this is a library, not application code, and the next game uses a different third of it. |
 | `src/server` | Server scripts and modules: the datastore and its lifecycle, the sync handshake, `fatal`, `validate`, `anticheat/`, `party-gate`, `teleport-guard`, `replication-focus`. |
 | `src/client` | Mounted at `ReplicatedStorage.Client`. Only `init.client` and `sync.client` run on their own; everything else is a module you call — `preload`, `play-sound` + `sound-groups`, `music-player`, `setup-ragdolls`, `frame-watch`, `mouse-unlock`, `camera-attach`, `strip-character-sounds`. |
 | `src/effects` | One-shot visual moments, one file each, spawned by name. Self-cleaning: see its own README. |

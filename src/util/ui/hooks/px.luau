@@ -79,6 +79,23 @@ local function usePx()
 	task.defer(hookCamera)
 end
 
+-- MIN_SCALE is a floor on how small the UI is allowed to get, and the right
+-- floor is not a property of the module -- it is a property of the LAYOUT. A
+-- HUD of icons stays legible far further down than a panel of body text does,
+-- so a place whose densest screen is text wants a higher floor and one that is
+-- all icons wants a lower one. Exported rather than hard-coded so the game sets
+-- it once at boot instead of this file being edited per project.
+--
+-- `recomputeScale` runs immediately because MIN_SCALE is read in two places
+-- (the clamp in `recomputeScale` and the NaN fallback in `modifyScale`) and
+-- neither is inside the vide graph: without this call the new floor would only
+-- take effect on the next viewport change, which on a desktop session may be
+-- never.
+local function setMinimumScale(scale: number)
+	MIN_SCALE = scale
+	recomputeScale()
+end
+
 local function setScale(scale: number)
 	currentScale(scale)
 end
@@ -120,6 +137,7 @@ end
 return setmetatable({
 	usePx = usePx,
 	setScale = setScale,
+	setMinimumScale = setMinimumScale,
 	raw = raw,
 	scale = scale,
 	offset = offset,

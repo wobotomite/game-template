@@ -2,7 +2,8 @@ const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
 const reduce_number_array = require(ReplicatedStorage.Util.tables["reduce-number-array"])
 
-const rng = Random.new()
+-- Built on FIRST USE rather than at require time -- see `default_random`.
+local rng: Random? = nil
 
 export type WeightTable<K = any> = {
 	[K]: number,
@@ -95,8 +96,58 @@ function redistribute_by_luck(weights: { number }, luck: number): ({ number }, n
 	return adjusted, sum
 end
 
+-- The fallback generator for callers that do not bring their own, created
+-- lazily so that REQUIRING this module costs nothing. `build` is the half most
+-- consumers use -- it is pure, and a lookup table is often built at load and
+-- sampled from somewhere else entirely -- so seeding a generator on every
+-- require was work done for nobody. It also detached the seed from require
+-- ORDER, which is a dependency nothing in a call site could have told you about.
+--
+-- Anything that needs a reproducible sequence passes its own Random to
+-- `sample` and never reaches this at all; `tests/weighted-random.spec` does
+-- exactly that.
+function default_random(): Random
+	local r = rng
+	if not r then
+		r = Random.new()
+		rng = r
+	end
+	return r
+end
+
+-- Pick an index from a roll in [0, 1), by straight linear scan over the raw
+-- weights. Deliberately NOT the alias method above: this is for the case where
+-- the weights are different on every call -- a drop table re-weighted by the
+-- player's luck, a spawn table filtered by what is already alive -- so the
+-- O(n) build the alias method needs would be paid every time and never amortised.
+-- Use `build` + `sample` when one weight table is sampled many times; use this
+-- when it is sampled once.
+--
+-- The roll is supplied rather than drawn so the caller keeps control of the
+-- generator: the same roll always gives the same index, which is what makes
+-- this testable and what lets a server replay a client's pick.
+--
+-- `roll` is not normalised against `total` by the caller -- it is scaled here
+-- -- and the final `return #weights` catches the float case where the
+-- subtractions do not quite reach zero. A roll of exactly 1, or weights that
+-- sum to zero, therefore land on the last index rather than on nothing.
+function index_at(weights: { number }, roll: number): number
+	local total = 0
+	for _, weight in weights do
+		total += weight
+	end
+	local at = roll * total
+	for index, weight in weights do
+		at -= weight
+		if at < 0 then
+			return index
+		end
+	end
+	return #weights
+end
+
 function sample<T>(aliasTable: LookupTable<T>, luck: number?, random: Random?): keyof<T>
-	const r = random or rng
+	const r = random or default_random()
 	local result: number
 	if luck == nil or luck == 1 then
 		const rand = r:NextInteger(1, aliasTable.num_weights)
@@ -122,4 +173,5 @@ end
 return table.freeze {
 	build = build,
 	sample = sample,
+	index_at = index_at,
 }

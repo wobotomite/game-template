@@ -2,6 +2,7 @@ const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
 const Ripple = require(ReplicatedStorage.Packages.ripple)
 const Vide = require(ReplicatedStorage.Packages.vide)
+const use_motion = require(script.Parent["use-motion"])
 
 -- A vide source driven by a ripple motion that is pre-wired to the TWEEN
 -- solver: fixed duration, an easing curve, a definite end.
@@ -57,15 +58,23 @@ export type TweenHandle<T> = {
 }
 
 local function use_tween<T>(initial: T, params: TweenParams?): (() -> T, TweenHandle<T>)
-	const motion = Ripple.createMotion(initial :: any)
-	const value = Vide.source(initial)
-
-	motion:start()
-	const disconnect = motion:onChange(value :: never)
+	-- Built ON `use-motion` rather than beside it. The two files were byte-for-byte
+	-- duplicates apart from one call (see the note above), and that duplication is
+	-- what let this one drift onto a nonexistent API without anybody noticing: a
+	-- second copy of the wiring reads as correct precisely because it looks like
+	-- the first. There is now ONE place that knows how a ripple motion is attached
+	-- to a vide source and torn down.
+	--
+	-- `use_motion` already registers a cleanup that disconnects the onChange and
+	-- stops the motion, and vide runs cleanups in reverse order, so this extra
+	-- one -- registered after -- runs FIRST. That ordering is the reason `destroy`
+	-- can live here at all: destroying a motion that is still started and still
+	-- has a live onChange would be tearing the object out from under its own
+	-- listener. Do not "simplify" by moving the destroy into `use-motion`: that
+	-- hook hands the raw motion back to callers who may well outlive the scope.
+	const value, motion = use_motion(initial)
 
 	Vide.cleanup(function()
-		disconnect()
-		motion:stop()
 		motion:destroy()
 	end)
 

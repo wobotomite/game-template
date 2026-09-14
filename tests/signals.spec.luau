@@ -142,12 +142,13 @@ do
 
 	--
 	-- THE PROPERTY THAT MATTERS is that the signal is not permanently broken.
-	-- The scratch buffer is TAKEN for the duration of a dispatch and handed
-	-- back at the end, so a throw simply loses it and the next fire allocates a
-	-- replacement. A `busy = true` flag restored after the loop would instead
-	-- be stuck true forever after one error -- permanently disabling the
-	-- optimisation it exists to provide, on the signal most likely to go
-	-- unnoticed.
+	-- Dispatch keeps a re-entrancy DEPTH counter, raised around the walk and
+	-- lowered after it, and `task.spawn` contains a listener throw to its own
+	-- thread -- so the loop always reaches the decrement and the counter cannot
+	-- be left stuck above zero. If it could, every later fire would believe it
+	-- was nested forever and allocate a throwaway order table on each one: the
+	-- exact cost the cached order exists to avoid, on the signal most likely to
+	-- go unnoticed.
 	remove_thrower()
 	local before = good_calls
 	signal:fire()
@@ -166,8 +167,9 @@ do
 		depth += 1
 		max_depth = math.max(max_depth, depth)
 		if depth < 3 then
-			-- A nested fire finds the buffer already taken and allocates its
-			-- own, rather than sharing one and shredding the outer walk.
+			-- A nested fire sees depth > 0. If it has to rebuild the order at
+			-- all it builds into a throwaway table, rather than clearing the
+			-- array the outer walk is still indexing and shredding it.
 			signal:fire()
 		end
 		depth -= 1

@@ -91,8 +91,17 @@ return function<T>(
 		end
 
 	const selected = vide.source(props.SelectedIndex or 0)
+	-- ARGUMENT ORDER: the VALUE being clamped is `selected()`, and the bounds are
+	-- 0 and the item count. It used to read `math.clamp(#items(), 0, selected())`,
+	-- which clamps the COUNT into the range [0, selected] -- so it wrote the item
+	-- count into `selected` whenever the list was shorter than the current index,
+	-- and clamped the count DOWN to the index otherwise. Either way the selection
+	-- was being assigned a list length. With an empty provider it pinned the
+	-- selection at 0 (which looked correct and is why this survived), and with a
+	-- populated one it jumped the carousel to a position nobody asked for every
+	-- time the list changed size.
 	vide.effect(function(): ()
-		selected(math.clamp(#items(), 0, selected()))
+		selected(math.clamp(selected(), 0, #items()))
 	end)
 	vide.effect(function()
 		if props.OnSelectedChanged then

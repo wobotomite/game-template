@@ -37,7 +37,13 @@ end
 type RagdollObject = {
 	rig: Model,
 	colliders: { BasePart },
-	root_weld: Weld,
+	-- OPTIONAL, because `util.ragdoll_weld_root` can legitimately fail to make
+	-- one -- no PrimaryPart yet, or no root joint it recognises (see the note
+	-- in util on AnimationConstraint rigs). This used to be a non-optional
+	-- `Weld` that the util module guaranteed by THROWING, so a rig that could
+	-- not be welded took the whole `init_ragdoll` down with it instead of being
+	-- set up without a root weld and repaired on the next `sync_ragdoll`.
+	root_weld: Weld?,
 	character_joints: { Motor6D },
 	ragdoll_joints: { util.SocketMapValue },
 	-- What each of the rig's own parts was in before it went limp, so releasing
@@ -145,9 +151,18 @@ function sync_ragdoll(rig: Model)
 
 	-- The root weld hangs off the PrimaryPart and bridges the root joint's two
 	-- parts, so a swap of either takes it with them.
-	if not stored.root_weld.Parent and rig.PrimaryPart then
-		stored.root_weld = util.ragdoll_weld_root(rig)
-		stored.root_weld.Enabled = stored.is_ragdolled
+	--
+	-- `not weld` as well as `not weld.Parent`: init is allowed to have produced
+	-- none at all now, so this is the repair path for both "it was destroyed"
+	-- and "there never was one", and it re-runs on every sync until the rig can
+	-- actually carry one.
+	const weld = stored.root_weld
+	if not weld or not weld.Parent then
+		const rebuilt = util.ragdoll_weld_root(rig)
+		if rebuilt then
+			rebuilt.Enabled = stored.is_ragdolled
+		end
+		stored.root_weld = rebuilt
 	end
 end
 
@@ -184,7 +199,16 @@ function set_ragdoll(rig: Model, val: boolean)
 		end
 		table.clear(stored.part_groups)
 	end
-	stored.root_weld.Enabled = val
+	-- `.Parent` as well as nil: `sync_ragdoll` above only rebuilds a destroyed
+	-- weld when the rig can carry one, so it is still possible to arrive here
+	-- holding a weld that was detached in between. Writing to a destroyed
+	-- instance is not an error in Roblox -- it is simply lost -- so the guard
+	-- is about not believing the write landed, rather than about avoiding a
+	-- throw.
+	const root_weld = stored.root_weld
+	if root_weld and root_weld.Parent then
+		root_weld.Enabled = val
+	end
 	for i, v in stored.ragdoll_joints do
 		if not v.a0.Parent or not v.a1.Parent then
 			continue

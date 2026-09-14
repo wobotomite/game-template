@@ -25,9 +25,23 @@ RunService.PostSimulation:Connect(function(a0: number)
 	profile.begin "physics-step"
 	for signal, data in signals do
 		data.counter += a0
-		if not data.rate or data.counter >= data.rate then
+		-- `first` fires a rate-limited listener on its FIRST tick instead of
+		-- making it sit out one whole period. A listener created mid-session --
+		-- a HUD element mounting, an effect spawned on a hit -- otherwise shows
+		-- nothing until its first period has banked, which on SLOW reads as a
+		-- stall rather than as a rate.
+		--
+		-- This used to be spelled `counter = rate or 0` at creation, which also
+		-- fired on tick one but handed the listener `c = rate + a0`: a
+		-- fabricated delta one whole period too large. Anything INTEGRATING
+		-- that delta -- a tween's elapsed, an exponential approach -- jumped a
+		-- period forward on its very first step. Starting the counter at zero
+		-- and flagging the first tick separately fires just as early and
+		-- reports the time that actually passed.
+		if not data.rate or data.first or data.counter >= data.rate then
 			const c = data.counter
 			data.counter = 0
+			data.first = false
 			signal:fire(c)
 		end
 	end
@@ -37,7 +51,7 @@ end)
 
 return function(rate: number?)
 	const ns = pseudo_signal.new<<number>>()
-	signals[ns] = { rate = rate, counter = rate or 0 }
+	signals[ns] = { rate = rate, counter = 0, first = true }
 	return extend_object(ns, {
 		destroy = function(self)
 			signals[getmetatable(self).__index] = nil

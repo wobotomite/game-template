@@ -1,29 +1,14 @@
-@native
-function getCameraOffset(fov: number, extentsSize: Vector3)
-	local halfSize = extentsSize.Magnitude / 2
-	local fovDivisor = math.tan(math.rad(fov / 2))
-	return halfSize / fovDivisor
-end
+-- ONE IMPLEMENTATION, TWO PATHS. This file and `ui/zoom-to-extents` were
+-- independent copies of the same function -- same maths, same `INVALID ZOOM!`
+-- error, different casing (`zoomToExtents` / `getCameraOffset` here, snake_case
+-- there) -- which is how a fix to one of them could be made and still leave the
+-- game running the other. `ui/` is the one the code actually reaches for
+-- (`ui/templates/viewport` requires it by that path), so that copy is the
+-- implementation and this path is kept only so an existing require does not
+-- break.
+--
+-- Prefer `ReplicatedStorage.Util.ui["zoom-to-extents"]` in new code: framing a
+-- camera on a model is a viewport concern, not an Instance utility.
+const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
-@native
-function zoomToExtents(camera: Camera, instance: Model | BasePart)
-	local cf, size
-	if instance:IsA "Model" then
-		cf, size = instance:GetBoundingBox()
-	else
-		cf, size = instance.CFrame, instance.Size
-	end
-
-	if not cf or not size then
-		error "INVALID ZOOM!"
-	end
-
-	local cameraOffset = getCameraOffset(camera.FieldOfView, size)
-	local cameraRotation = camera.CFrame - camera.CFrame.Position
-
-	local instancePosition = cf.Position
-	camera.CFrame = cameraRotation + instancePosition + (-cameraRotation.LookVector * cameraOffset)
-	camera.Focus = cameraRotation + instancePosition
-end
-
-return zoomToExtents
+return require(ReplicatedStorage.Util.ui["zoom-to-extents"])

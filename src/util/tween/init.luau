@@ -36,6 +36,15 @@ local tweens: { [Instance]: TweenType } = {}
 const active: { Instance } = {}
 
 render_step():connect(function(a0: number)
+	-- IDLE IS THE COMMON CASE. Nothing is tweening for most of a session, and
+	-- this callback still runs on every frame for as long as the game is open.
+	-- The loop below walks `active` rather than `tweens`, so it would not have
+	-- short-circuited on its own -- it would clear and refill the scratch array
+	-- from an empty table, every frame, forever. `next` on an empty table is
+	-- the cheapest test there is.
+	if next(tweens) == nil then
+		return
+	end
 	table.clear(active)
 	for i in tweens do
 		table.insert(active, i)
@@ -74,7 +83,15 @@ function mt.cancel(self)
 		return
 	end
 	self.running = false
-	tweens[self.i] = nil
+	-- ONLY IF THE SLOT IS STILL OURS. `new` REPLACES rather than cancels (see the
+	-- long note there), so a handle can outlive its entry: the caller still holds
+	-- this object after a second tween took over the same instance. Clearing
+	-- `tweens[self.i]` unconditionally from a stale handle would evict the LIVE
+	-- replacement -- it would stop stepping and never reach its end value, with
+	-- the property stranded wherever that frame left it.
+	if tweens[self.i] == self then
+		tweens[self.i] = nil
+	end
 	task.spawn(self.tween_fn, math.lerp(self.start_value, self.end_value, 0))
 end
 

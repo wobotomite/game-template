@@ -109,8 +109,23 @@ function clear_all()
 	table.clear(containers)
 end
 
+-- This module is a SINGLETON -- one container table, one step subscription --
+-- and `init` is how a server boot wires it up. A second call would add a SECOND
+-- SLOW listener over the same shared state: every tick would then expire
+-- effects twice and push the replication payload twice, and the only visible
+-- symptom is durations running short by an inconsistent amount. Two boot paths
+-- reaching one service is not exotic (a service registry plus an explicit call,
+-- a re-run in Studio), and the guard belongs here rather than in each caller
+-- because there is nothing a caller could check.
+local started = false
 function init()
 	assert(RunService:IsServer(), "CAN ONLY BE CALLED ON THE SERVER")
+	-- After the assert, deliberately: a CLIENT calling `init` is a bug worth
+	-- an error whether or not the server has already started.
+	if started then
+		return
+	end
+	started = true
 
 	physics_step(event_step_enum.SLOW):connect(function(a0: number)
 		const now = synced_time()

@@ -19,7 +19,24 @@ function weld_attachments_motor(a0: Attachment, a1: Attachment)
 	return motor
 end
 
-function build_welds(i1: Instance, i2: Instance, query: string?)
+-- `connector` picks WHICH KIND OF JOINT is made, defaulting to the Motor6D one
+-- because that is what every existing call site wants: a Motor6D is animatable,
+-- so a welded accessory still moves with the rig's animations.
+--
+-- It is a parameter rather than a second function because the matching, the
+-- warnings and the teardown closure are the entire body -- only the one line
+-- that constructs the joint differs -- and `weld_attachments` (RigidConstraint)
+-- was already sitting in this module's exports with no way to reach it through
+-- `build_welds`. A RigidConstraint is the right choice when the two things must
+-- not be animated apart (a tool locked to a socket); a plain Weld when the
+-- caller wants the joint invisible to the animator entirely.
+function build_welds(
+	i1: Instance,
+	i2: Instance,
+	query: string?,
+	connector: ((Attachment, Attachment) -> Motor6D | Weld | RigidConstraint)?
+)
+	const make = connector or weld_attachments_motor
 	const welds: { Motor6D | Weld | RigidConstraint } = {}
 	for i, v in i1:QueryDescendants(`Attachment{query or ""}`) do
 		const targetAttachment = i2:FindFirstChild(v.Name, true)
@@ -31,7 +48,7 @@ function build_welds(i1: Instance, i2: Instance, query: string?)
 			warn(`INVALID ATTACHMENT {targetAttachment:GetFullName()}`)
 			continue
 		end
-		table.insert(welds, weld_attachments_motor(targetAttachment, v :: any))
+		table.insert(welds, make(targetAttachment, v :: any))
 	end
 	return function()
 		for i, v in welds do

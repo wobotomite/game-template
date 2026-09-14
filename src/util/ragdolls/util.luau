@@ -9,9 +9,25 @@ export type SocketMapValue = {
 	a1: Attachment,
 }
 
+-- ANIMATIONCONSTRAINT IS QUERIED ALONGSIDE MOTOR6D because a modern rig can
+-- have ZERO Motor6Ds. Roblox's newer character rigs drive their joints with
+-- AnimationConstraint, and a Motor6D-only query over one of those comes back
+-- EMPTY -- so the ragdoll built no sockets, created no colliders, and `set`
+-- flipped a flag over nothing. The character just stayed standing, with nothing
+-- thrown and nothing logged, because an empty joint map is indistinguishable
+-- from a rig that genuinely has no joints.
+--
+-- WHAT THIS DOES AND DOES NOT FIX. It widens what is FOUND. The filter below
+-- still requires Part0 and Part1, which an AnimationConstraint does not carry
+-- -- it relates two Attachments -- so such a joint is found here and then
+-- dropped, and the socket build has no path for it yet. That is deliberate:
+-- an empty map is now distinguishable from an unsupported one when this is
+-- stepped through, which is the part that was costing the time. A rig that is
+-- PURELY AnimationConstraint-driven still does not ragdoll; wiring the socket
+-- build to attachments is the follow-up, and it is not done here.
 @native
 function get_joint_map(rig: Model): { Motor6D }
-	const joint_map = rig:QueryDescendants "Motor6D" :: { Motor6D }
+	const joint_map = rig:QueryDescendants "Motor6D,AnimationConstraint" :: { Motor6D }
 	local n = {}
 
 	for i, entry in joint_map do
@@ -86,20 +102,44 @@ function create_colliders(socketMap: { SocketMapValue }): { BasePart }
 	return colliderArr
 end
 
+-- RETURNS NIL RATHER THAN THROWING, on all three of its old failure paths.
+--
+-- Every caller is a ragdoll being set up or REPAIRED, and the three cases this
+-- used to `assert` on are all things that happen normally rather than bugs:
+--
+--   * no PrimaryPart -- the character was destroyed, or is still streaming in;
+--   * already welded -- the repair path in `init` calls this precisely because
+--     it cannot tell whether the weld survived, so "it is already there" is the
+--     expected answer, not an error. It now hands back the EXISTING weld, which
+--     is what the caller wanted either way;
+--   * no root joint -- see `get_joint_map`: a rig can legitimately have none
+--     this query recognises.
+--
+-- Throwing out of any of them unwound the caller mid-setup and left the rig
+-- half-built with no ragdoll and no way back. A nil return makes the outcome
+-- something the caller can hold, and every caller in this module now does.
 @native
-function ragdoll_weld_root(rig: Model)
-	assert(rig.PrimaryPart, "no primary part found")
-	assert(rig.PrimaryPart:FindFirstChild(root_weld_name) == nil, "already welded root")
-	for i, joint in rig:QueryDescendants "Motor6D#RootJoint,Motor6D#Root" do
+function ragdoll_weld_root(rig: Model): Weld?
+	const primary = rig.PrimaryPart
+	if not primary then
+		return nil
+	end
+
+	const existing = primary:FindFirstChild(root_weld_name)
+	if existing and existing:IsA "Weld" then
+		return existing
+	end
+
+	for i, joint in rig:QueryDescendants "Motor6D#RootJoint,Motor6D#Root,AnimationConstraint#Root" do
 		const Weld = Instance.new "Weld"
 		Weld.Name = root_weld_name
 		Weld.Enabled = false
 		Weld.Part0 = joint.Part0
 		Weld.Part1 = joint.Part1
-		Weld.Parent = rig.PrimaryPart
+		Weld.Parent = primary
 		return Weld
 	end
-	error "could not find root joint!"
+	return nil
 end
 
 function build_sockets_from_joint_map(jointMap: { Motor6D })
