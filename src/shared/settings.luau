@@ -100,13 +100,153 @@ const SETTINGS = {
 	-- the named sound profiles cues are played through.
 	--
 	-- Read by `src/client/audio`.
-	audio = {},
+	audio = {
+		-- PER-BUS STARTING VOLUME, by the bus names in
+		-- `src/client/audio/sound-groups.luau`. A group's volume MULTIPLIES with
+		-- each sound's own, so this is the mix BETWEEN families of sound, not a
+		-- master fader.
+		--
+		-- Music and ambience sit under the cues on purpose. Both are continuous
+		-- and a cue is a moment; with every bus at 1 the only way to make a
+		-- pickup chime audible over a bed is to keep pushing the chime up, and
+		-- then it is too loud the moment the bed stops.
+		BUS_VOLUME = {
+			SFX = 1,
+			UI = 1,
+			AMBIENCE = 0.7,
+			MUSIC = 0.5,
+		},
+
+		-- MUSIC. The crossfading playlist in `src/client/audio/music-player.luau`.
+		music = {
+			-- Long enough that a change of track reads as a transition rather
+			-- than a cut, short enough that the two tracks are not audibly
+			-- fighting for most of it.
+			FADE = 1.6,
+			-- Under the cue mix even after the bus volume above, because music
+			-- is the thing a player stops hearing and cues are the thing they
+			-- must not miss.
+			VOLUME = 0.35,
+			-- How long a track gets to load before it is written off. Generous:
+			-- this is a streamed multi-megabyte asset on a cold client, and
+			-- giving up early on a slow connection would skip through the whole
+			-- playlist on join.
+			LOAD_TIMEOUT = 20,
+		},
+
+		-- THE CUE ENGINE. Voice limiting, distance culling and the decay of a
+		-- held bed, all of it in `Client.audio.cue`.
+		cue = {
+			-- The voice budget. Every cue past this preempts a lower-priority
+			-- one or is dropped. A budget exists because a fight spawns cues in
+			-- bursts and an unbounded engine turns that into a wall of noise
+			-- with the important line buried in it -- the same reason a mixing
+			-- desk has a finite number of faders.
+			MAX_VOICES = 12,
+			-- RollOffMinDistance as a fraction of a cue's radius: inside this
+			-- the cue is at full volume, outside it falls off. Roblox attenuates
+			-- by Min/distance with Min defaulting to 10 studs regardless of how
+			-- far away the sound is meant to be audible, so a cue with a 200
+			-- stud radius and no Min set is effectively silent at 30.
+			NEAR_FRACTION = 0.1,
+			-- Pitch multiplier at the very edge of a cue's radius, lerped in
+			-- from 1 at the listener. Distance reads as dullness, so a far cue
+			-- that is merely quieter reads as a quiet cue nearby.
+			MURK_PITCH_FAR = 0.92,
+			-- Default random pitch spread, when a spec does not carry its own.
+			-- Without it a cue fired ten times in two seconds is audibly ONE
+			-- sample played ten times, which is what makes a rapid action sound
+			-- mechanical.
+			JITTER = 0.05,
+			-- How long a held bed takes to reach its level when it opens. A bed
+			-- that snaps to full volume reads as a click.
+			BED_FADE_IN = 0.35,
+			-- How long after the last `hold` call a bed keeps its level before
+			-- it starts decaying. Callers drive a bed from per-frame code, so a
+			-- dropped frame or a slow step must not chop the sound -- the grace
+			-- is what makes "stopped asking" different from "missed a frame".
+			HOLD_GRACE = 0.5,
+			-- The bed sweeper's period, and what a bed's gain is multiplied by
+			-- on each pass once its grace has run out. Together they set how
+			-- long a released bed takes to fall away: it is a fade, not a stop,
+			-- because a caller that simply stops asking (its object destroyed,
+			-- its state left) should not cut the sound off mid-note.
+			SWEEP_INTERVAL = 0.25,
+			SWEEP_DECAY = 0.5,
+			-- When a fired voice is checked for having ever arrived. `Ended`
+			-- never fires for an asset that failed to load, so without this a
+			-- bad id leaks a Sound per play and holds a slot in the voice budget
+			-- forever. Four seconds, because a cue that late has already missed
+			-- the moment it was for.
+			LOAD_DEADLINE = 4,
+			-- Extra seconds past a voice's own length before it is swept. The
+			-- sweep is a backstop for `Ended` never arriving, and taking a sound
+			-- at exactly its length cuts the decay -- which reads as the audio
+			-- glitching rather than as a timer.
+			SWEEP_SLACK = 1,
+		},
+
+		-- NAMED CUE MIXES, by the file that fires them. Each entry is a whole
+		-- cue spec minus its asset id, so the levels of a family of sounds are
+		-- readable together rather than one number per call site.
+		cues = {
+			-- The widget kit's own sounds. Every one is 2D (`radius = 0`): a
+			-- button lives on the screen, not in the world.
+			--
+			-- `min_interval` is what keeps a dragged cursor or a held key from
+			-- machine-gunning the same sample; the hover interval is the longest
+			-- because hover is the one a moving mouse fires without being asked.
+			ui = {
+				HOVER = { volume = 0.035, pitch = 1, jitter = 0, min_interval = 0.09, radius = 0 },
+				CLICK = { volume = 0.09, pitch = 1, jitter = 0, min_interval = 0.06, radius = 0 },
+				-- Opening is pitched up against the identical close sample, so
+				-- the two directions are distinguishable with one asset.
+				OPEN = { volume = 0.055, pitch = 1.1, jitter = 0, min_interval = 0.12, radius = 0 },
+				CLOSE = { volume = 0.045, pitch = 1, jitter = 0, min_interval = 0.12, radius = 0 },
+				-- Loudest of the set: a purchase is the one UI moment a player
+				-- is allowed to be sure about.
+				PURCHASE = { volume = 0.28, pitch = 1, jitter = 0, min_interval = 0.08, radius = 0 },
+				-- An alert is a line the game shouts at the player, so it is
+				-- rarer and louder than a click, and it may not be swallowed by
+				-- a burst of them.
+				ALERT = { volume = 0.2, pitch = 1, jitter = 0, min_interval = 0.15, radius = 0 },
+			},
+		},
+
+		-- PER-ASSET TRIM, by the key in `assets.sounds`. Two different problems,
+		-- one table:
+		--
+		--   gain            library uploads are mastered at wildly different
+		--                   levels, so the same `volume` in a spec is not the
+		--                   same loudness for two ids. This is the per-asset
+		--                   correction, so a spec's volume means what it says.
+		--   start / finish  the usable part of an asset that has silence, a
+		--                   count-in, or three more takes after the one you
+		--                   wanted. Trimming here beats re-uploading and beats
+		--                   every call site knowing the offsets.
+		--
+		-- Empty is the correct state for a fresh game: an id with no profile
+		-- plays whole at gain 1.
+		profiles = {},
+	},
 
 	-- BOOT. How long the client waits for data and a character before it stops
 	-- waiting, and what the preloader is handed.
 	--
 	-- Read by `src/client/boot`.
-	boot = {},
+	boot = {
+		-- How often the "am I actually in yet" wait polls. Every UI script gates
+		-- on that wait, so a slower interval is dead time on screen after the
+		-- data has already landed. Twenty wakeups a second, only while loading,
+		-- costs nothing.
+		POLL_SECONDS = 0.05,
+		-- The longest the client waits for a CHARACTER before it stops waiting
+		-- and carries on. The wait used to be unbounded, which meant a spawn
+		-- that never completed took the client's ENTIRE UI with it: no HUD, no
+		-- menus, and a loading cover that never comes down. A player with no
+		-- body and a working menu can at least see that something went wrong.
+		SPAWN_WAIT_SECONDS = 20,
+	},
 
 	-- TRANSITION. The loading cover shown from ReplicatedFirst: its colours, fade
 	-- times, and the longest it may stay up before it is removed regardless.

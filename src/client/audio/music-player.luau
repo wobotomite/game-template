@@ -4,6 +4,7 @@ const ReplicatedStorage = game:GetService "ReplicatedStorage"
 const tween = require(ReplicatedStorage.Util.tween)
 const sound_groups = require(script.Parent["sound-groups"])
 const pick_other = require(ReplicatedStorage.Util.tables["pick-other"])
+const MUSIC = require(ReplicatedStorage.Shared.settings).audio.music
 
 -- One music track at a time, crossfaded whenever the situation changes.
 --
@@ -14,7 +15,7 @@ const pick_other = require(ReplicatedStorage.Util.tables["pick-other"])
 -- own thin driver deciding WHICH playlist, and they all share this.
 --
 --   music_player.set(playlists.combat)   -- an array of asset ids
---   music_player.set {}                  -- fade to silence
+--   music_player.stop()                  -- fade to silence
 --
 -- The rules, in order of how often they bite:
 --
@@ -35,12 +36,9 @@ const pick_other = require(ReplicatedStorage.Util.tables["pick-other"])
 --    upload on a library that can change under us, so this is a when, not an
 --    if -- and Client/play-sound guards the same hazard for one-shots.
 
-const FADE = 1.6
-const VOLUME = 0.35
--- How long a track gets to load before it is written off. Generous: this is a
--- streamed multi-megabyte asset on a cold client, and giving up early on a
--- slow connection would skip through the whole playlist on join.
-const LOAD_TIMEOUT = 20
+const FADE = MUSIC.FADE
+const VOLUME = MUSIC.VOLUME
+const LOAD_TIMEOUT = MUSIC.LOAD_TIMEOUT
 
 -- Ids that failed to load, so the playlist stops offering them. Never cleared:
 -- an asset that would not load once in this session will not load later in it,
@@ -50,7 +48,14 @@ const dead: { [string]: true } = {}
 
 export type Playlist = { string }
 
-local playlist: Playlist = {}
+-- ONE shared empty playlist, frozen. `set` is a no-op when handed the playlist
+-- it already has, and that test is by IDENTITY -- so a caller writing
+-- `music_player.set {}` to mean silence builds a fresh table every call and
+-- restarts the fade every time. `stop()` below hands over this one instead, and
+-- it is frozen so nothing can turn "silence" into a playlist for everyone.
+const EMPTY: Playlist = table.freeze {}
+
+local playlist: Playlist = EMPTY
 local playing: Sound? = nil
 local playing_id: string? = nil
 -- Bumped on every `set`. A fade-in that has been superseded checks this before
@@ -85,12 +90,24 @@ function next_track(): string?
 end
 
 function start(id: string, mine: number)
+	-- Looked up ONCE. `get` is cheap but it is the same group twice on the same
+	-- line, and the pair below (route, then parent) must not be able to
+	-- disagree.
+	const group = sound_groups.get(sound_groups.MUSIC)
 	const sound = Instance.new "Sound"
 	sound.Name = "Music"
 	sound.SoundId = id
 	sound.Volume = 0
-	sound.SoundGroup = sound_groups.get(sound_groups.MUSIC)
-	sound.Parent = sound_groups.get(sound_groups.MUSIC)
+	-- SET EXPLICITLY, not left at the default, and not assumed to be false. A
+	-- looped Sound never fires `Ended` -- so a single playlist entry that
+	-- happens to be a looping asset, or a Sound whose template was cloned from
+	-- something else, silently ends the score for the rest of the session: the
+	-- track plays forever and the handler that would pick the next one never
+	-- runs. The watchdog below does not catch it either, because the asset DID
+	-- load.
+	sound.Looped = false
+	sound.SoundGroup = group
+	sound.Parent = group
 	playing = sound
 	playing_id = id
 	sound:Play()
@@ -132,14 +149,7 @@ function start(id: string, mine: number)
 	end)
 end
 
--- The whole API. `list` is an array of sound asset ids -- keep them in a record
--- so the same table identity comes back each time (see the first rule at the
--- top: `list == playlist` is what makes re-setting cheap). An empty list means
--- "fade to silence and stay there".
-function set(list: Playlist)
-	if list == playlist then
-		return
-	end
+function swap(list: Playlist)
 	playlist = list
 	-- Already playing something this list still wants: leave it alone.
 	if playing and playing_id and table.find(list, playing_id) then
@@ -159,6 +169,28 @@ function set(list: Playlist)
 	end
 end
 
+-- The whole API. `list` is an array of sound asset ids -- keep them in a record
+-- so the same table identity comes back each time (see the first rule at the
+-- top: `list == playlist` is what makes re-setting cheap).
+function set(list: Playlist)
+	if list == playlist then
+		return
+	end
+	swap(list)
+end
+
+-- Fade out and stay silent. A separate call rather than `set {}` because that
+-- spelling builds a new table per call, which is never identical to the last
+-- one -- so a driver calling it every state change restarts the fade forever
+-- and the silence never settles.
+function stop()
+	if playlist == EMPTY and playing == nil then
+		return
+	end
+	swap(EMPTY)
+end
+
 return table.freeze {
 	set = set,
+	stop = stop,
 }
