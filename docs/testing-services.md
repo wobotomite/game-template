@@ -39,10 +39,13 @@ jest = { wally = "roblox/jest", version = "3.20.1" }
 JestGlobals = { wally = "roblox/jest-globals", version = "^3.20.0" }
 ```
 
-Both resolved to **3.20.1**. The two aliases are the names Roblox's own docs
-use, which is the point of spelling `JestGlobals` in that casing: an example
-pasted out of the documentation requires `Packages.JestGlobals` and works here
-unchanged.
+Both resolved to **3.20.1**. `JestGlobals` is spelled the way Roblox's own docs
+spell it, so a test pasted out of the documentation requires
+`Packages.JestGlobals` and works here unchanged. The docs spell the other alias
+`Jest`; here it is lower-case `jest`, and exactly one file requires it — the
+entry point `scripts/run-jest.luau` generates — so a pasted *test* never meets
+the difference. A pasted *run script* does: `Packages.Jest` is `Packages.jest`
+here.
 
 - the docs, and the install block these two lines are a translation of —
   https://roblox.github.io/jest-roblox/

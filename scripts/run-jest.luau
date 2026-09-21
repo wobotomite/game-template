@@ -128,7 +128,10 @@ local function disable_boot_scripts(node: any)
 		return
 	end
 	local mount = node["$path"]
-	if type(mount) == "string" then
+	-- `isDir` first: a mount may be a single FILE (`src/shared/settings.luau`
+	-- is one), and Lune's `fs.isFile` on a path UNDER a file does not answer
+	-- false, it throws "Not a directory".
+	if type(mount) == "string" and fs.isDir(mount) then
 		for _, init in BOOT_INIT_FILES do
 			if fs.isFile(`{mount}/{init}`) then
 				local properties = node["$properties"] or {}

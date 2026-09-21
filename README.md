@@ -28,8 +28,8 @@ scripts/analyze.sh --counts  # per-file diagnostic counts, for diffing
 | `src/client` | Mounted at `ReplicatedStorage.Client`. Only `init.client` and `sync.client` run on their own; everything else is a module you call — `preload`, `play-sound` + `sound-groups`, `music-player`, `setup-ragdolls`, `frame-watch`, `mouse-unlock`, `camera-attach`, `strip-character-sounds`. |
 | `src/effects` | One-shot visual moments, one file each, spawned by name. Self-cleaning: see its own README. |
 | `src/replicated-first` | Anything that must exist before the game loads. |
-| `tests` | Lune specs. Not synced to Roblox — see [docs/testing.md](docs/testing.md). |
-| `scripts` | `analyze.sh`, which is how you typecheck. |
+| `tests` | Lune specs. Not synced to Roblox — see [docs/testing.md](docs/testing.md). `tests/services` holds the Jest Roblox tests for server services, which run in the engine — see [docs/testing-services.md](docs/testing-services.md). |
+| `scripts` | `analyze.sh`, which is how you typecheck, and `run-jest.luau`, which builds the service-test place and runs it. |
 | `docs` | The reasoning below. |
 
 ## Docs
@@ -39,6 +39,9 @@ scripts/analyze.sh --counts  # per-file diagnostic counts, for diffing
   silently in Roblox, what fails silently in this toolchain.
 - **[docs/testing.md](docs/testing.md)** — how the specs work, and the rules that
   exist because breaking them produced a *green run over broken code*.
+- **[docs/testing-services.md](docs/testing-services.md)** — the part a Lune spec
+  cannot load: server services, tested inside Roblox under Jest Roblox, with the
+  real remotes mocked out.
 - **[docs/network.md](docs/network.md)** — sendbufs has no queue, and what
   follows from that; hardening remote handlers.
 - **[docs/server-hardening.md](docs/server-hardening.md)** — the sliding-ring
