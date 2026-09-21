@@ -7,7 +7,7 @@
 --
 -- The whole look lives in `settings.ui` and `assets.fonts`: no widget in here
 -- writes a colour, a size or a font of its own, so restyling a game is those
--- two tables. See the UI kit doc in `docs`.
+-- two tables. `docs/ui-kit.md` is the tour.
 const base = require(script["__base"])
 const screen = require(script.screen)
 
