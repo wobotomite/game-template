@@ -7,6 +7,15 @@
 
 
 sourcemap.json
+
+# Both are DERIVED, by scripts/run-jest.luau, from default.project.json and the
+# tests beside it. Checking either one in would make it a second place the
+# project tree is written down, and the copy goes stale the first time a mount
+# moves -- silently, because Rojo builds a project file that points nowhere
+# without complaining.
+/test.project.json
+/build/
+
 # add here
 roblox_packages
 luau_packages
