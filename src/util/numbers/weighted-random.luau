@@ -149,7 +149,12 @@ end
 function sample<T>(aliasTable: LookupTable<T>, luck: number?, random: Random?): keyof<T>
 	const r = random or default_random()
 	local result: number
-	if luck == nil or luck == 1 then
+	-- `luck <= 0` takes the unweighted path too. The exponent below is
+	-- `1 / luck`: zero makes it infinite (every weight under 1 becomes 0, every
+	-- weight over 1 becomes inf, and the roll is NaN), and a negative one
+	-- INVERTS the table, so a debuff that drove luck below zero made the rarest
+	-- drop the most common. Neither errors.
+	if luck == nil or luck == 1 or luck <= 0 then
 		const rand = r:NextInteger(1, aliasTable.num_weights)
 		result = if r:NextNumber() < aliasTable.prob[rand] then rand else aliasTable.alias[rand]
 	else

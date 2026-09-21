@@ -124,31 +124,27 @@ do
 		good_calls += 1
 	end)
 
-	-- Each listener gets its own thread, so a throw is contained to it. This
-	-- used to be the opposite: the inline dispatcher ran listeners bare, a
-	-- throw propagated, and the rest of that dispatch was lost -- so this spec
-	-- deliberately did NOT assert that the other listener ran, because it
-	-- depended on table order and failed whenever the thrower went first.
+	-- Each listener runs under its own `pcall`, so a throw is contained to it.
+	-- The first dispatcher ran listeners bare, a throw propagated, and the rest
+	-- of that dispatch was lost -- so this spec deliberately did NOT assert that
+	-- the other listener ran, because it depended on table order and failed
+	-- whenever the thrower went first. The second gave each listener a thread,
+	-- which contained the throw and cost a coroutine per listener per fire.
+	-- `pcall` keeps the containment and drops the allocation.
 	--
-	-- Now it is assertable, and asserting it is the point of the change.
-	--
-	-- EXPECT A STACK TRACE IN THE OUTPUT HERE. The throw is reported by the
-	-- scheduler rather than swallowed -- which is the correct behaviour and the
-	-- same thing Roblox does -- so this spec prints "listener blew up" and
-	-- passes. It is not a failure; `h.done()` sets the exit code explicitly so
-	-- a thread throwing cannot be mistaken for a verdict.
+	-- EXPECT ONE `[warn]` LINE IN THE OUTPUT HERE. The throw is reported once
+	-- per listener rather than swallowed, so this spec prints "listener blew up"
+	-- and passes. It is not a failure.
 	signal:fire()
 	h.check("a listener that throws does not stop the others", good_calls > 0)
 
-	--
 	-- THE PROPERTY THAT MATTERS is that the signal is not permanently broken.
 	-- Dispatch keeps a re-entrancy DEPTH counter, raised around the walk and
-	-- lowered after it, and `task.spawn` contains a listener throw to its own
-	-- thread -- so the loop always reaches the decrement and the counter cannot
-	-- be left stuck above zero. If it could, every later fire would believe it
-	-- was nested forever and allocate a throwaway order table on each one: the
-	-- exact cost the cached order exists to avoid, on the signal most likely to
-	-- go unnoticed.
+	-- lowered after it, and `pcall` contains a listener throw -- so the loop
+	-- always reaches the decrement and the counter cannot be left stuck above
+	-- zero. If it could, every later fire would believe it was nested forever
+	-- and allocate a throwaway order table on each one: the exact cost the
+	-- cached order exists to avoid, on the signal most likely to go unnoticed.
 	remove_thrower()
 	local before = good_calls
 	signal:fire()
@@ -195,9 +191,40 @@ do
 		seen += value
 	end)
 	signal:fire(5)
-	-- task.spawn runs the body immediately up to its first yield, and these do
-	-- not yield, so the count is settled by the time fire returns.
+	-- Listeners are called in place, so the count is settled by the time fire
+	-- returns. (It was already true under `task.spawn`, which runs a body up to
+	-- its first yield -- but only because these do not yield.)
 	h.equals("fire has finished dispatching by the time it returns", seen, 10)
+end
+
+-- ================================ wait() ==================================
+
+do
+	local signal = pseudo_signal.new()
+	local order = {}
+	local got_a, got_b
+
+	-- The waiter's continuation must run AFTER every listener of the fire that
+	-- woke it. Resumed inline it ran between two listeners, and whatever it did
+	-- next -- fire again, destroy what the others were about to read -- landed
+	-- in the middle of their dispatch.
+	-- A bare coroutine, not `task.spawn`: `wait()` parks on `coroutine.yield`
+	-- and is woken by `coroutine.resume`, so no scheduler is involved.
+	coroutine.wrap(function()
+		got_a, got_b = signal:wait()
+		table.insert(order, "waiter")
+	end)()
+	signal:connect(function()
+		table.insert(order, "listener")
+	end)
+
+	signal:fire("x", 7)
+	h.equals("a waiter receives what was fired", `{got_a},{got_b}`, "x,7")
+	h.equals("and is resumed after the listeners of that fire", order[#order], "waiter")
+	h.equals("a waiter is a one-shot: it leaves no listener behind", signal:count(), 1)
+
+	signal:fire("y", 8)
+	h.equals("a second fire does not resume it again", `{got_a},{got_b}`, "x,7")
 end
 
 h.done()

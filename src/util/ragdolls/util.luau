@@ -2,6 +2,14 @@ const collider_part_name = "ragdoll-collider-part"
 const root_weld_name = "ragdoll-root-weld"
 -- Read back out by the parent module, which owns the collidable matrix.
 const ragdoll_group = "RagdollColliders"
+-- What each host part's CanCollide WAS before a collider took over for it,
+-- keyed by the collider. Teardown used to write `true` back unconditionally,
+-- which made every limb of a rig that ships with non-colliding arms (most
+-- custom rigs, anything using a body-collider capsule) solid after its first
+-- ragdoll -- players started snagging on each other an hour into a server.
+-- Weak keys: a collider destroyed by its character despawning takes its entry
+-- with it.
+const host_can_collide: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 export type SocketMapValue = {
 	parent: Motor6D,
 	socket: BallSocketConstraint,
@@ -56,8 +64,13 @@ function clear_colliders(colliders: { BasePart })
 		-- which left every remaining collider in place and the ragdoll stuck.
 		const host = v.Parent
 		if host and host:IsA "BasePart" then
-			host.CanCollide = true
+			-- `nil` is a collider this table never saw (made by an older build
+			-- of this module still live in a running server); `true` is what
+			-- that build would have written.
+			const saved = host_can_collide[v]
+			host.CanCollide = if saved == nil then true else saved
 		end
+		host_can_collide[v] = nil
 		v:Destroy()
 	end
 	table.clear(colliders)
@@ -85,6 +98,7 @@ function create_collider_part(part: BasePart): Part
 
 	weld.Part1 = part
 	p.Parent = part
+	host_can_collide[p] = part.CanCollide
 	part.CanCollide = false
 	return p
 end

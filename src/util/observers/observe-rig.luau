@@ -108,8 +108,12 @@ function observe_rig(player: Player): Resolver
 	end
 
 	const function destroy()
-		stop()
+		-- Listeners first. `stop()` runs the character cleanup above, which
+		-- publishes EMPTY -- and with the listeners still attached, destroying an
+		-- observer fired every one of them a last time, into consumers that were
+		-- mid-teardown themselves.
 		table.clear(listeners)
+		stop()
 	end
 
 	return table.freeze {

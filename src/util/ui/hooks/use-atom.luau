@@ -5,6 +5,17 @@ const vide = require(ReplicatedStorage.Packages.vide)
 
 return function<T>(atom: charm.Getter<T>)
 	const val = vide.source(atom())
+	-- The write below is DEFERRED, so it can land after this scope was destroyed
+	-- (an atom changes on the frame a panel unmounts). `dtor` stops new
+	-- deliveries but cannot recall one already queued, and a source written
+	-- after its scope died re-runs effects that have been cleaned up. The flag
+	-- is what the queued write checks.
+	local alive = true
+	const function write(state: T)
+		if alive then
+			val(state)
+		end
+	end
 	-- `subscribe`, NOT `listen`. The two differ in exactly one way in charm
 	-- 0.11: `listen` invokes the callback once immediately, `subscribe` does
 	-- not. The line above has already seeded the source with `atom()`, so
@@ -20,8 +31,11 @@ return function<T>(atom: charm.Getter<T>)
 		-- Defer: the listener runs inside charm's flush, and writing a vide
 		-- source there nests graph evaluation inside the flush (recursion /
 		-- script-timeout territory). Deferring lands the write outside both.
-		task.defer(val, state)
+		task.defer(write, state)
 	end)
-	vide.cleanup(dtor)
+	vide.cleanup(function()
+		alive = false
+		dtor()
+	end)
 	return val :: () -> T
 end

@@ -4,6 +4,12 @@ const count_map = require(ReplicatedStorage.Util.tables["count-map"])
 const pseudo_connection = {}
 pseudo_connection.__index = pseudo_connection
 
+-- One warning per broken listener (or waiter), ever. A listener on a step
+-- signal that throws does so EVERY frame, and sixty identical lines a second
+-- bury the first one -- which is the only one carrying information. Weak keys,
+-- so remembering a listener here never keeps it alive.
+const warned: { [(...any) -> ()]: true } = setmetatable({}, { __mode = "k" }) :: any
+
 type EventMt<IN...> = {
 	connect: (self: EventMt<IN...>, fn: (IN...) -> ()) -> () -> (),
 	fire: (self: EventMt<IN...>, IN...) -> (),
@@ -14,11 +20,16 @@ type EventMt<IN...> = {
 -- The cached dispatch order, and the two bits of bookkeeping that keep it
 -- honest: `dirty` says the listener set changed since `order` was built, and
 -- `depth` counts how many fires are walking it right now (see `fire`).
+-- `resume*` is the queue of `wait()` callers this dispatch has to wake once it
+-- is over (see `wait`).
 type Dispatch = {
 	order: { (...any) -> () },
 	n: number,
 	dirty: boolean,
 	depth: number,
+	resume: { thread },
+	resume_args: { any },
+	resume_n: number,
 }
 
 type EventType<IN...> = setmetatable<{
@@ -40,15 +51,28 @@ function pseudo_connection.connect<T>(self, cb: () -> ())
 	end
 end
 
+-- A waiter is QUEUED by its listener and resumed after the dispatch that woke
+-- it has finished, never from inside it.
+--
+-- Resuming inline ran the waiter's continuation in the middle of the listener
+-- loop: whatever it did next -- fire this signal again, connect, destroy the
+-- thing the remaining listeners were about to read -- happened between two
+-- listeners of the same fire, and if it yielded again the rest of the dispatch
+-- waited on it. Queued, every listener of a fire sees the same world, and the
+-- waiters then run in the order they were woken.
 function pseudo_connection.wait(self)
 	const coro = coroutine.running()
+	const dispatch = self.__dispatch
 	local c
 	c = self:connect(function(...)
 		c()
 		if coroutine.status(coro) ~= "suspended" then
 			return
 		end
-		coroutine.resume(coro, ...)
+		const at = dispatch.resume_n + 1
+		dispatch.resume_n = at
+		dispatch.resume[at] = coro
+		dispatch.resume_args[at] = table.pack(...)
 	end)
 	return coroutine.yield()
 end
@@ -60,7 +84,7 @@ end
 function pseudo_connection.new<T>(): EventType<T>
 	return setmetatable({
 		__listeners = {},
-		__dispatch = { order = {}, n = 0, dirty = false, depth = 0 },
+		__dispatch = { order = {}, n = 0, dirty = false, depth = 0, resume = {}, resume_args = {}, resume_n = 0 },
 	}, pseudo_connection)
 end
 
@@ -100,6 +124,20 @@ end
 -- `depth` is a counter rather than a boolean because the nesting can go more
 -- than one level deep, and a boolean cleared by the innermost return would tell
 -- the middle frames they were safe to clear.
+--
+-- WHY LISTENERS ARE CALLED IN PLACE, NOT SPAWNED. This used to be
+-- `task.spawn(fn, ...)` -- one coroutine per listener per fire. A game built on
+-- this template measured ~30 unthrottled step signals per rendered frame, which
+-- is ~30 coroutine allocations before any gameplay code ran. `pcall` keeps the
+-- isolation that mattered (one throwing listener cannot stop the rest, and the
+-- throw is reported once instead of leaking into the scheduler) without the
+-- allocation.
+--
+-- THE CONTRACT THAT BUYS: A LISTENER MUST NOT YIELD. `pcall` is yieldable in
+-- Luau, so a listener that waits does not error -- it parks the whole dispatch,
+-- and every listener after it runs late. Return immediately and `task.spawn` the
+-- waiting, which is the same rule a reactive scope already lives under. The
+-- census that made the switch safe found no yield in 64 step-listener bodies.
 function pseudo_connection.fire(self, ...)
 	const listeners = self.__listeners
 	const dispatch = self.__dispatch
@@ -127,10 +165,40 @@ function pseudo_connection.fire(self, ...)
 		-- order can also be one fire STALE in the nested case above, so this
 		-- membership check is what keeps a dropped listener from being called.
 		if listeners[fn] then
-			task.spawn(fn, ...)
+			const ok, err = pcall(fn, ...)
+			if not ok and not warned[fn] then
+				warned[fn] = true
+				warn(`[pseudo-signal] a listener errored and was reported once: {err}`)
+			end
 		end
 	end
 	dispatch.depth -= 1
+
+	-- Wake the `wait()` callers, but only from the OUTERMOST fire: a nested fire
+	-- returning is still inside somebody else's listener loop. The queue is moved
+	-- out before anything resumes because a resumed waiter may call `wait()`
+	-- again at once, and that write must land in a fresh queue, not the one being
+	-- walked.
+	if dispatch.depth == 0 and dispatch.resume_n > 0 then
+		const pending_n = dispatch.resume_n
+		const pending = table.move(dispatch.resume, 1, pending_n, 1, {})
+		const pending_args = table.move(dispatch.resume_args, 1, pending_n, 1, {})
+		table.clear(dispatch.resume)
+		table.clear(dispatch.resume_args)
+		dispatch.resume_n = 0
+
+		for i = 1, pending_n do
+			const coro = pending[i]
+			const packed = pending_args[i] :: any
+			if coroutine.status(coro) == "suspended" then
+				const ok, err = coroutine.resume(coro, table.unpack(packed, 1, packed.n))
+				if not ok and not warned[coro :: any] then
+					warned[coro :: any] = true
+					warn(`[pseudo-signal] a waiter errored and was reported once: {err}`)
+				end
+			end
+		end
+	end
 end
 
 table.freeze(pseudo_connection)

@@ -72,6 +72,12 @@ function end_tween(i: Instance)
 		return
 	end
 	tweens[i] = nil
+	-- BEFORE the final callback, not after. A tween that finished on its own
+	-- left `running` true, so a later `cancel()` on the stale handle passed its
+	-- guard and did its work a second time; and a callback that checks
+	-- `handle.running` to tell "last frame" from "mid flight" read the wrong
+	-- answer on exactly the frame it was asking about.
+	obj.running = false
 	obj.tween_fn(math.lerp(obj.start_value, obj.end_value, 1))
 end
 

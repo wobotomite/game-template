@@ -16,8 +16,12 @@ local vide = require(ReplicatedStorage.Packages.vide)
 --
 -- BlurRadius is a **UDim**, not a number. Passing a number is the mistake this
 -- probe catches on a client that has the class.
+--
+-- The probe instance is destroyed: it is parented nowhere, but it was created
+-- outside any vide scope, so nothing else would ever collect it.
 const SHADOW_SUPPORTED = pcall(function()
-	vide.create "UIShadow" { BlurRadius = UDim.new(0, 16), Transparency = 0.3 }
+	const probe = vide.create "UIShadow" { BlurRadius = UDim.new(0, 16), Transparency = 0.3 }
+	probe:Destroy()
 end)
 
 -- Returns nil where UIShadow is unavailable. vide skips a nil child, so a call

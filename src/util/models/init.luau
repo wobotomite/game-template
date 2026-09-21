@@ -17,7 +17,15 @@ function get_unrotated_extents_size(mdl: Model)
 		end
 		table.insert(arr, basePart.Size)
 	end
-	return Vector3.zero.Max(unpack(arr))
+	-- A fold, not `Vector3.zero.Max(unpack(arr))`. `unpack` pushes every size
+	-- onto the stack at once and throws "too many results to unpack" on a model
+	-- past a few thousand parts, and the dotted call on a zero-part model
+	-- (`Max` with no arguments) threw too. The fold returns zero for that.
+	local acc = Vector3.zero
+	for _, size in arr do
+		acc = acc:Max(size)
+	end
+	return acc
 end
 
 @native

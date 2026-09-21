@@ -24,8 +24,12 @@ export type ContextConfig = {
 local input_contexts_folder: Folder? = nil
 
 function get_input_contexts_folder(): Folder
-	if input_contexts_folder then
-		return input_contexts_folder
+	-- `.Parent`, because a cached folder can be DESTROYED under us (a character
+	-- reset script that clears the Player's children, a debug wipe). Contexts
+	-- parented to a destroyed folder are silently inert: no error, no input.
+	const cached = input_contexts_folder
+	if cached and cached.Parent then
+		return cached
 	end
 
 	const player = Players.LocalPlayer
@@ -117,6 +121,13 @@ function action_mt.bind_direction(self: Action, def: ActionDef): InputBinding
 	return binding
 end
 
+-- Destroying the InputAction takes its bindings and its signal connections
+-- with it. A panel that makes actions when it mounts needs this on unmount, or
+-- every reopen adds another live copy of the same key.
+function action_mt.destroy(self: Action)
+	self.instance:Destroy()
+end
+
 function action_mt.append(self: Action, gui_button: GuiButton): InputBinding
 	const binding = Instance.new "InputBinding"
 	binding.UIButton = gui_button
@@ -171,6 +182,11 @@ export type Context = typeof(setmetatable({} :: { instance: InputContext }, cont
 
 function context_mt.action(self: Context, name: string, def: ActionDef | { Enum.KeyCode }): Action
 	return new_action(self.instance, name, def)
+end
+
+-- Takes every action under it along. See `action_mt.destroy`.
+function context_mt.destroy(self: Context)
+	self.instance:Destroy()
 end
 
 function context(name: string, config: ContextConfig?): Context
