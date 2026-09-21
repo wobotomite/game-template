@@ -79,7 +79,16 @@ const ASSETS = {
 	music = {},
 
 	-- TEXTURES the effect primitives draw with.
-	textures = {},
+	textures = {
+		-- A REAL VALUE RATHER THAN THE `""` STUB, and the only entry in this file
+		-- that gets to be one: `rbxasset://` is not an upload, it is a file that
+		-- ships inside the engine, so it resolves on a place that has never
+		-- published anything. This particular one is the stock ParticleEmitter
+		-- texture -- a soft-edged square -- which is what `effects.shared.burst`
+		-- falls back to so that a burst with no art chosen still draws something
+		-- instead of drawing nothing and looking broken.
+		SQUARE = "rbxasset://textures/particles/SquareParticle.png",
+	},
 
 	-- FONTS the widget kit draws with. Swapping the two entries here restyles
 	-- every label in the game.

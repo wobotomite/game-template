@@ -341,7 +341,56 @@ const SETTINGS = {
 	-- `src/effects/shared` -- particle bursts, rings, display ghosts.
 	--
 	-- Read by `src/effects`.
-	effects = {},
+	effects = {
+		-- THE PARTICLE BURST primitive (`src/effects/shared/burst.luau`). Only
+		-- the three values every burst falls back on live here; everything else
+		-- about a burst -- how many, how fast, what colour -- is the moment's
+		-- own and is passed in by the effect that spawns it.
+		burst = {
+			-- The full hemisphere, so a burst with no direction given sprays
+			-- everywhere. A caller that wants a cone passes one; a caller that
+			-- forgot gets something that reads as an explosion rather than as a
+			-- line of particles going one way for no reason.
+			DEFAULT_SPREAD_DEG = 180,
+			-- Studs. Small, because the default is for sparks and specks -- the
+			-- bursts that want a big particle (smoke, mist) are the ones that
+			-- always pass their own size anyway.
+			DEFAULT_SIZE = 0.25,
+			-- The transparency curve over a particle's life: opaque at birth,
+			-- gone at death. Without a curve every particle in the burst
+			-- vanishes at full opacity on the frame its lifetime ends, and a
+			-- burst ending is a visible pop rather than a fade.
+			FADE = NumberSequence.new {
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(1, 1),
+			},
+		},
+
+		-- THE EXPANDING RING primitive (`src/effects/shared/ring.luau`): a band
+		-- that grows from one radius to another and fades out. Impacts,
+		-- shockwaves, landings, anything that wants to say "from here,
+		-- outwards".
+		ring = {
+			-- A circle drawn as this many straight boxes. The cost of a ring is
+			-- linear in this number and a ring is on screen for well under a
+			-- second, so the trade is roundness against parts-per-moment rather
+			-- than against a frame budget that has to hold.
+			SEGMENTS = 24,
+			-- Each segment's height as a fraction of its width, so a ring is a
+			-- flat BAND rather than a tube: it reads as a wave travelling along
+			-- the ground instead of as a pipe lying on it.
+			THICKNESS = 0.4,
+			-- Where the fade starts. Not zero: a Neon band at full opacity reads
+			-- as a solid object, and a ring is meant to read as light.
+			TRANSPARENCY = 0.15,
+			-- The fade runs on `alpha ^ FADE_POWER`, and this is above 1 on
+			-- purpose: the ring holds its brightness through the first half of
+			-- its expansion and goes in the last part. A linear fade spends the
+			-- whole life half-visible, which reads as a ring that is dim rather
+			-- than as one that is leaving.
+			FADE_POWER = 1.6,
+		},
+	},
 
 	-- UI. The widget kit's theme: colours, metrics, text sizes, motion. Every
 	-- visual value a widget uses comes from here, so reskinning a game is this
