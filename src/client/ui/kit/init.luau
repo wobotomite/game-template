@@ -19,13 +19,25 @@ return table.freeze {
 	COLORS = base.COLORS,
 	METRICS = base.METRICS,
 
-	-- Widgets.
+	-- Widgets. `button-hotkey` and `input-label` are deliberately NOT here:
+	-- they are how a button grows a key cap, and a panel that wants one wants a
+	-- button.
+	window = require(script.window),
+	dialog = require(script.dialog),
+	button = require(script.button),
+	hold_button = require(script["hold-button"]),
+	hotbar = require(script.hotbar),
 	icon = require(script.icon),
+	lock_icon = require(script["lock-icon"]),
 	text = require(script.text),
 
-	-- Layers.
+	-- Layers. `screen` puts widgets on the player's screen, `surface` puts the
+	-- same widgets on a part in the world, and `console` is the walk-up prompt
+	-- that opens one.
 	screen = screen.screen,
 	mount = screen.mount,
+	surface = require(script.surface),
+	console = require(script.console),
 
 	-- Primitives, for a panel building something the kit has no widget for. A
 	-- panel that uses these still looks like the rest of the game.
