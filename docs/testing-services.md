@@ -151,9 +151,16 @@ than the code under test.
 
 The generated entry point, `build/jest/run.lua`, is generated for the same
 reason the project file is: every path in it is a fact the runner already owns.
-A checked-in copy breaks silently too — the mount moves, the entry keeps naming
-the old one, and `runCLI` reports zero test suites, which reads as *everything
-passed*.
+A checked-in copy is a second home for both paths — the mount moves and the
+entry keeps naming the old one.
+
+What an empty run does, read from the installed source rather than assumed
+(`jest-core/src/runJest.lua`, and `exit` in `roblox-shared/src/nodeUtils.lua`):
+with no test found, 3.20.1 logs *No tests found, exiting with code 1* and calls
+`exit(1)`, which in Roblox is `error("Exited with code: 1")`. The promise
+rejects, the entry point sees `Rejected`, and the run is red. **The one option
+that turns that into a green run is `passWithNoTests`. Never set it**: a
+`testMatch` that matches nothing must stay a failure.
 
 ## How a service test avoids the real remotes
 

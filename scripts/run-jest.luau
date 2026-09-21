@@ -162,9 +162,13 @@ end
 --
 -- GENERATED rather than checked in, because every path in it -- where Jest
 -- lives, which instance is the test root -- is a fact this file already owns
--- above. A checked-in copy would be the second home for both, and the way it
--- breaks is silent: the mount moves, the entry keeps pointing at the old name,
--- and `runCLI` reports zero test suites, which reads as "everything passed".
+-- above. A checked-in copy would be the second home for both: the mount moves
+-- and the entry keeps pointing at the old name.
+--
+-- An empty run is RED here and must stay so. With no test found, Jest 3.20.1
+-- calls `exit(1)`, which in Roblox is `error("Exited with code: 1")`, so the
+-- promise rejects and `passed` below is false. `passWithNoTests` is the one
+-- option that would turn that green; it is deliberately not passed.
 --
 -- The shape is upstream's, both halves of it: the public example on
 -- https://roblox.github.io/jest-roblox/ is the `awaitStatus` / `results.success`
