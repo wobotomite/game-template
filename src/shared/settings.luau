@@ -50,7 +50,34 @@ const SETTINGS = {
 	-- shouted line.
 	--
 	-- Read by `src/shared/services/alert.luau` and the client alert page.
-	alerts = {},
+	alerts = {
+		-- Words the alert service colours wherever they appear in a line, as
+		-- WORD AND COLOUR TOGETHER rather than split across `strings` and here:
+		-- a word with no colour matches nothing and a colour with no word
+		-- colours nothing, so adding a highlight would otherwise be an edit in
+		-- two files that silently half-works if you forget one. These are not
+		-- lines a player reads either -- they are matching rules run against a
+		-- line somebody else wrote.
+		--
+		-- UPPER CASE, because the service raises the line before it matches, so
+		-- an entry in mixed case can never match anything.
+		--
+		-- ORDER IS LONGEST FIRST: the first entry that matches at a position
+		-- wins, so a multi-word phrase has to come before any single word
+		-- inside it ("FREE COINS" before "COINS") or the shorter one takes the
+		-- front of the phrase and leaves the rest plain. Singular and plural
+		-- are separate entries, and their order does not matter -- the
+		-- service's word boundaries stop "COIN" matching inside "COINS".
+		--
+		-- The colour here is the coins colour from
+		-- `src/shared/records/currencies.luau`; keep the two in step, or a
+		-- reward line and the currency bar above it disagree about what coins
+		-- look like.
+		HIGHLIGHTS = {
+			{ text = "COINS", color = Color3.fromRGB(255, 200, 0) },
+			{ text = "COIN", color = Color3.fromRGB(255, 200, 0) },
+		},
+	},
 
 	-- DEBUG. Studio-only commands and the menu that fires them. Nothing in this
 	-- section is read in a published server: the remotes that would carry it do not
@@ -62,7 +89,8 @@ const SETTINGS = {
 	-- CHARACTER. Rig and ragdoll numbers shared by the server and client halves of
 	-- character setup, so a death looks the same from both sides of the wire.
 	--
-	-- Read by `src/server/players/setup-ragdolls.luau` and its client twin.
+	-- Read by `src/server/players/setup-ragdolls.luau`, its client twin, and
+	-- `src/server/anticheat`.
 	character = {
 		-- Angular impulse applied to the root part the instant the humanoid dies,
 		-- in the character's own frame: 90 about X is a forward topple, which
@@ -73,6 +101,20 @@ const SETTINGS = {
 		-- pose. Scale it with the rig: this is sized for a standard R15, and a
 		-- heavier assembly barely moves under it.
 		DEATH_SPIN = Vector3.new(90, 0, 0),
+
+		-- The fastest a LEGITIMATE player is ever meant to travel, studs/s, by
+		-- any means the server does not express as `Humanoid.WalkSpeed`: a
+		-- vehicle, a launcher, a conveyor, a swim or sprint multiplier applied
+		-- to the assembly rather than to the humanoid. The anticheat multiplies
+		-- it by its own slack to get the speed below which it never flags, so
+		-- this is the ONE number a game has to revisit when it adds a fast
+		-- loadout -- and the only thing standing between that loadout and a kick.
+		--
+		-- 28 is a sprint over the default 16 walk, and 28 x the anticheat's 1.6
+		-- slack is the 45 that used to be written into the anticheat itself.
+		-- Raise it for the fast thing; do not raise it "to be safe", because
+		-- every stud of headroom is a stud a speed hack gets for free.
+		TOP_SPEED = 28,
 	},
 
 	-- COMMERCE. Developer products and game passes as SHAPE: what a product grants,
