@@ -19,7 +19,10 @@ function carousel_item(props: {
 	OnClick: () -> (),
 	OnClickSound: (() -> ())?,
 } & { [any]: any })
-	const options = { frequency = 6, dampingRatio = 1.5 }
+	-- The key is `damping`. ripple 0.6 reads no `dampingRatio`, and an unknown
+	-- option key is ignored without a word: under the old spelling this ran
+	-- critically damped (1) for as long as it read 1.5.
+	const options = { frequency = 6, damping = 1.5 }
 	const index_pos, index_pos_motion = use_motion(vide.read(props.Index) - props.SelectedIndex())
 	const selected_scale, selected_scale_motion =
 		use_motion(if props.SelectedIndex() == vide.read(props.Index) then 1 else 0.9)
