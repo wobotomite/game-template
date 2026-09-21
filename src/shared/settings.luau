@@ -70,13 +70,62 @@ const SETTINGS = {
 	-- and descriptions in `strings`; the products record joins them.
 	--
 	-- Read by the receipt and pass services.
-	commerce = {},
+	commerce = {
+		-- DEVELOPER PRODUCTS, as SHAPE. The ids live in `assets.products`, the
+		-- names and descriptions in `strings.commerce.PRODUCTS`, and
+		-- `src/shared/records/products.luau` joins the three by KEY.
+		--
+		-- `grants` maps a currency key from `src/shared/records/currencies.luau`
+		-- to an amount, and the receipt service adds it to the save. A product
+		-- that grants something else -- a consumable, an unlock -- is served by
+		-- registering an `apply` with the receipt service rather than by growing
+		-- this shape, because only the game knows what its own save looks like.
+		--
+		-- BOTH ROWS ARE EXAMPLES. Their ids in `assets.products` are `0`, so the
+		-- products record leaves them out of its id lookup and nothing can be
+		-- bought until real ids are pasted in. Rename them; do not ship them.
+		PRODUCTS = {
+			{ key = "COINS_SMALL", category = "coins", icon = "", grants = { coins = 100 } },
+			{ key = "COINS_LARGE", category = "coins", icon = "", grants = { coins = 1000 } },
+		},
+
+		-- The purchase-id ledger each save carries, so a receipt Roblox delivers
+		-- twice is granted ONCE. Roblox re-delivers a receipt -- across servers,
+		-- across sessions -- until some server answers PurchaseGranted, so "have
+		-- I already granted this" is a question only saved data can answer.
+		--
+		-- CAPPED BECAUSE IT IS SAVED DATA. An unbounded array grows for the life
+		-- of the account and eventually eats into the profile's size budget. The
+		-- OLDEST entry is evicted first, so an evicted id is one Roblox stopped
+		-- retrying long ago; 200 is far more than can ever be in flight at once.
+		RECEIPT_LEDGER_MAX = 200,
+
+		-- Player attribute name per pass key, so a LocalScript can gate UI on
+		-- ownership without asking the server. Keyed by the same KEY as
+		-- `assets.passes`; a pass with no entry here simply gets no attribute.
+		PASS_ATTRIBUTES = {},
+
+		-- `UserOwnsGamePassAsync` fails transiently, and a failure is NOT "does
+		-- not own". Treating one as the other takes a paid feature away from
+		-- somebody who paid for it, which is the worst bug this section can
+		-- cause, so the pass service retries and reports UNKNOWN rather than
+		-- false.
+		PASS_CHECK_ATTEMPTS = 3,
+		PASS_CHECK_RETRY_SECONDS = 5,
+	},
 
 	-- BADGES. Retry budget for `BadgeService`, which fails transiently and must not
 	-- be hammered. The badge ids themselves are in `assets.badges`.
 	--
 	-- Read by the badge service.
-	badges = {},
+	badges = {
+		-- `BadgeService` fails transiently under load, and an award it drops is
+		-- never retried by the engine -- the badge is simply never granted.
+		-- Three attempts two seconds apart rides out a blip without turning one
+		-- award into a retry storm from every server at once.
+		ATTEMPTS = 3,
+		RETRY_SECONDS = 2,
+	},
 
 	-- LEADERBOARDS. Which saved counters become global boards, how often a board is
 	-- read and written, and the OrderedDataStore budgets the worker stays inside.
@@ -94,7 +143,13 @@ const SETTINGS = {
 	-- turns the default voice pipeline off.
 	--
 	-- Read by the voice service.
-	voice = {},
+	voice = {
+		-- Name given to the `AudioDeviceInput` the voice service parents to each
+		-- player. Named rather than left as the class default so a mixer graph
+		-- can find every player's microphone by name, and so a second input
+		-- created by something else is distinguishable from this one.
+		INPUT_NAME = "Voice",
+	},
 
 	-- AUDIO. Bus volumes, the cue engine's voice budget and distance culling, and
 	-- the named sound profiles cues are played through.

@@ -7,8 +7,30 @@ const fatal = require(script.boot.fatal)
 -- The game then runs in a state nobody designed -- players in a live session
 -- whose progress cannot be saved, with nothing on screen to say so. Wrapping
 -- boot means that failure empties the server instead, honestly.
+--
+-- THIS LIST IS THE SERVER'S ORDER OF OPERATIONS. Every service is a module with
+-- a `start()`, started here and nowhere else, so that "what runs on this
+-- server, and in what order" is one readable list rather than a guess assembled
+-- from whichever files happened to have side effects at require time. Each
+-- `start()` is idempotent, so a game that also starts one from somewhere of its
+-- own gets one instance, not two.
+--
+-- ORDER MATTERS ONLY WHERE A COMMENT SAYS IT DOES. Services that need a
+-- player's save register with `lifecycle.on_loaded`, which replays for players
+-- already loaded, so a late registration cannot miss anyone.
 fatal.guard("server-boot", function()
+	-- FIRST, always. Every service below either reads a save or writes one, and
+	-- this is what fails when the DataStore API is unreachable -- which is a
+	-- failure the whole server should die of, here, rather than one discovered
+	-- an hour in when nothing has been saving. The save's own lifecycle (load,
+	-- unload, shutdown flush) is started by `data-lifecycle.server.luau`.
 	require(script.data.datastore)
-end)
 
-print "Hello world, from server!"
+	-- COMMERCE. Receipts first: it claims `MarketplaceService.ProcessReceipt`,
+	-- and Roblox can deliver a pending receipt the moment a player joins.
+	require(script.players.receipts).start()
+	require(script.players["pass-service"]).start()
+	require(script.players["badge-service"]).start()
+
+	require(script.players["voice-service"]).start()
+end)

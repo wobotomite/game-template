@@ -46,7 +46,24 @@ const STRINGS = {
 
 	-- COMMERCE. Product and pass names and descriptions, by the same KEY as
 	-- `settings.commerce.PRODUCTS`, and the line shown when a purchase is granted.
-	commerce = {},
+	commerce = {
+		-- Shouted at the buyer once the grant is SAVED, not when the receipt
+		-- arrives: a line that says the purchase landed before it is durable is
+		-- a line the player can be shown twice, or shown for a grant that was
+		-- then lost.
+		GRANTED = "<b>PURCHASE RECEIVED</b> · {name}",
+
+		-- By the same KEY as `settings.commerce.PRODUCTS`. Both rows here are
+		-- the examples that section ships; rename them together or the products
+		-- record will assert on the mismatch at boot, which is the point.
+		PRODUCTS = {
+			COINS_SMALL = { name = "100 COINS", description = "A handful of coins." },
+			COINS_LARGE = { name = "1,000 COINS", description = "A pile of coins." },
+		},
+
+		-- By the same KEY as `assets.passes`. Empty until the game has a pass.
+		PASSES = {},
+	},
 
 	-- LEADERBOARDS. Board titles, column headings, and the three states a board
 	-- can be in besides ready: loading, empty, unavailable.

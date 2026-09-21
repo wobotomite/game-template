@@ -31,7 +31,10 @@ const ASSETS = {
 	-- `0` means not created yet; the products record skips it.
 	--
 	-- Create them on the Creator Dashboard, then paste the ids here.
-	products = {},
+	products = {
+		COINS_SMALL = 0,
+		COINS_LARGE = 0,
+	},
 
 	-- GAME PASSES, by key. `0` means not created yet.
 	--
@@ -41,7 +44,11 @@ const ASSETS = {
 	-- BADGES, by key. `0` means not created yet.
 	--
 	-- The badge service skips an unset badge and warns once.
-	badges = {},
+	badges = {
+		-- Awarded the first time a player's data loads, by the lifecycle
+		-- fan-out. An EXAMPLE, and the one badge nearly every game wants.
+		WELCOME = 0,
+	},
 
 	-- EXPERIENCE NOTIFICATION STRING IDS (Creator Dashboard -> Notifications).
 	-- `""` means not created yet; the reminder scheduler then stays idle.
