@@ -1,9 +1,10 @@
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
 const network_ownership = require(ReplicatedStorage.Util.instances["network-ownership"])
-const observe_character = require(ReplicatedStorage.Util.observers["observe-character"])
 const observe_players = require(ReplicatedStorage.Util.observers["observe-players"])
+const observe_rig = require(ReplicatedStorage.Util.observers["observe-rig"])
 const ragdolls = require(ReplicatedStorage.Util.ragdolls)
+const settings = require(ReplicatedStorage.Shared.settings)
 
 -- The ragdoll itself is CLIENT-side (ReplicatedStorage.Client.character.setup-ragdolls
 -- flips Motor6Ds off and BallSocketConstraints on when a humanoid dies). This
@@ -18,8 +19,9 @@ const ragdolls = require(ReplicatedStorage.Util.ragdolls)
 -- a part on its own.
 
 -- The spin that starts the topple, applied on the server for a reason -- see
--- the ownership comment below.
-const DEATH_SPIN = Vector3.new(90, 0, 0)
+-- the ownership comment below. In settings rather than here because the client
+-- half tunes the fall against it and the two have to agree.
+const DEATH_SPIN = settings.character.DEATH_SPIN
 
 -- OPT-IN:
 --
@@ -34,12 +36,56 @@ function start()
 	end
 	started = true
 
-	observe_players(function(player: Player)
-		return observe_character(player, function(character: Model): (() -> ())?
-			const humanoid = character:WaitForChild("Humanoid", 30) :: Humanoid?
-			if not humanoid then
-				return nil
+	observe_players(function(player: Player): () -> ()
+		-- A RIG resolver rather than `observe_character`. A character can be
+		-- parented before its Humanoid exists, and the old shape's answer to that
+		-- was `WaitForChild("Humanoid", 30)` INSIDE the observer callback: it
+		-- yields the observer's own thread, and for up to thirty seconds it holds
+		-- a character the player may already have left. The resolver publishes
+		-- again as each part appears, so the wait becomes a second call with a
+		-- fuller rig instead of a blocked thread.
+		const rig = observe_rig(player)
+
+		-- The character this player is currently bound for, and the two
+		-- connections that binding made.
+		local ready: Model? = nil
+		local added: RBXScriptConnection? = nil
+		local died: RBXScriptConnection? = nil
+
+		const function forget()
+			if added then
+				added:Disconnect()
+				added = nil
 			end
+			if died then
+				died:Disconnect()
+				died = nil
+			end
+			ready = nil
+		end
+
+		const function bind(parts: observe_rig.Rig)
+			-- THE RE-ENTRANCY GUARD, and the reason the resolver needs one. A rig
+			-- republishes whenever any of its four parts changes -- the appearance
+			-- load swapping the Head is enough -- and without this, the SAME
+			-- character got a second DescendantAdded connection and a second
+			-- Died:Once on every republish. Two Died handlers means the death
+			-- impulse is applied twice and ownership is handed over twice, which
+			-- reads as a corpse that flies.
+			if parts.character == ready then
+				return
+			end
+			-- A different character (or none): whatever the last one bound is now
+			-- stale, and an undisconnected DescendantAdded on a dead rig keeps
+			-- that whole character reachable.
+			forget()
+
+			const character = parts.character
+			const humanoid = parts.humanoid
+			if character == nil or humanoid == nil then
+				return
+			end
+			ready = character
 
 			-- 2. Death with BreakJointsOnDeath left on *destroys* every Motor6D in
 			--    the rig -- and the client parents its sockets to those joints, its
@@ -66,10 +112,10 @@ function start()
 					instance.CollisionGroup = ragdolls.CHARACTER_GROUP
 				end
 			end
-			for i, descendant in character:GetDescendants() do
+			for _, descendant in character:GetDescendants() do
 				claim(descendant)
 			end
-			const added = character.DescendantAdded:Connect(claim)
+			added = character.DescendantAdded:Connect(claim)
 
 			-- 3. THE one that made death read as a freeze. A living player's
 			--    character is network-owned by that player's client, so its
@@ -82,7 +128,7 @@ function start()
 			--    client, sat at exactly 0 velocity for two full seconds with all 15
 			--    sockets enabled. Hand the corpse back and the same local ragdoll
 			--    collapses and replicates to everyone.
-			const died = humanoid.Died:Once(function()
+			died = humanoid.Died:Once(function()
 				const root = humanoid.RootPart
 				if not root or not player.Parent then
 					return
@@ -96,12 +142,19 @@ function start()
 				-- Ownership of the root part carries the whole assembly.
 				network_ownership.set(root, player)
 			end)
+		end
 
-			return function()
-				added:Disconnect()
-				died:Disconnect()
-			end
-		end)
+		const unsubscribe = rig.changed(bind)
+		-- And once for whatever is already there: `changed` only fires on the
+		-- NEXT publish, and a player who already has a character when this
+		-- starts would otherwise never be bound at all.
+		bind(rig.get())
+
+		return function()
+			unsubscribe()
+			rig.destroy()
+			forget()
+		end
 	end)
 end
 

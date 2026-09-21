@@ -63,7 +63,17 @@ const SETTINGS = {
 	-- character setup, so a death looks the same from both sides of the wire.
 	--
 	-- Read by `src/server/players/setup-ragdolls.luau` and its client twin.
-	character = {},
+	character = {
+		-- Angular impulse applied to the root part the instant the humanoid dies,
+		-- in the character's own frame: 90 about X is a forward topple, which
+		-- reads as falling rather than as the body switching off.
+		--
+		-- Applied on the SERVER, in the frame before network ownership is handed
+		-- back to the dying player's client, so the velocity replicates with the
+		-- pose. Scale it with the rig: this is sized for a standard R15, and a
+		-- heavier assembly barely moves under it.
+		DEATH_SPIN = Vector3.new(90, 0, 0),
+	},
 
 	-- COMMERCE. Developer products and game passes as SHAPE: what a product grants,
 	-- how many times an ownership check retries. The ids are in `assets`, the names
