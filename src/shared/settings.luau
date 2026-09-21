@@ -152,7 +152,7 @@ const SETTINGS = {
 			-- Pitch multiplier at the very edge of a cue's radius, lerped in
 			-- from 1 at the listener. Distance reads as dullness, so a far cue
 			-- that is merely quieter reads as a quiet cue nearby.
-			MURK_PITCH_FAR = 0.92,
+			FAR_PITCH = 0.92,
 			-- Default random pitch spread, when a spec does not carry its own.
 			-- Without it a cue fired ten times in two seconds is audibly ONE
 			-- sample played ten times, which is what makes a rapid action sound
@@ -184,6 +184,14 @@ const SETTINGS = {
 			-- at exactly its length cuts the decay -- which reads as the audio
 			-- glitching rather than as a timer.
 			SWEEP_SLACK = 1,
+			-- The volume a decaying bed is finally destroyed at, as a FRACTION
+			-- of that bed's own volume rather than an absolute -- a quiet bed
+			-- and a loud one should disappear at the same point in their own
+			-- fade, not at the same number. Above zero because the decay is a
+			-- halving and so never actually reaches silence; without a floor a
+			-- bed nobody is asking for any more stays alive forever at an
+			-- inaudible volume, holding its Sound and its sweep.
+			HOLD_FLOOR = 0.01,
 		},
 
 		-- NAMED CUE MIXES, by the file that fires them. Each entry is a whole

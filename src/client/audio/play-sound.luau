@@ -17,6 +17,13 @@ const sound_groups = require(script.Parent["sound-groups"])
 -- else is set. And for the ones that ARE positional, set RollOffMinDistance:
 -- Roblox attenuates by Min/distance with Min defaulting to 10, and MaxDistance
 -- alone only says where a sound is CULLED, not how it falls off.
+--
+-- THIS OR THE CUE BUS? This one plays what it is given, immediately, with no
+-- policy at all -- which is right for a sound with no competition, and for a
+-- caller that must not be second-guessed. `Client.audio.cue` is the same job
+-- with a voice budget, priorities, cooldowns and distance culling on top, and
+-- is what anything fired by gameplay should use: cues in bursts are the case
+-- this file has no answer for. Both sweep a dead id the same way, below.
 
 -- Cues live in a folder INSIDE SoundService rather than directly under it.
 -- Playback is identical: a Sound is 2D unless its parent is a BasePart or an
