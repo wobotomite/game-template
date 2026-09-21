@@ -1,0 +1,35 @@
+--!strict
+-- Jest's configuration for the service tests. See docs/testing-services.md.
+--
+-- WHERE THIS FILE HAS TO SIT. Jest finds it by looking for a CHILD of the root
+-- `runCLI` was pointed at whose name is exactly `jest.config`, and nothing
+-- else: `jest-config/src/resolveConfigPath.lua:107` tests
+-- `child:IsA("ModuleScript") and child.Name == JEST_CONFIG_BASE_NAME`, and
+-- `jest-config/src/constants.lua:20` sets that name to "jest.config" (read in
+-- roblox/jest-config 3.20.1, the version installed). So this file belongs
+-- beside the tests and is named for the tool, not for us.
+-- `scripts/run-jest.luau` mounts this directory at ReplicatedStorage.Tests and
+-- points runCLI there.
+--
+-- WHY THE PATTERN HAS NO EXTENSION. What `testMatch` is matched against is not
+-- a filesystem path: `jest-core/src/SearchSource.lua` walks the root's
+-- ModuleScript descendants and, when `CoreScriptSyncService:GetScriptFilePath`
+-- gives it nothing -- which is the case in a BUILT place, since nothing is
+-- synced -- falls back to `getRelativePath`, the instance path. So the string
+-- being matched here is `Tests/award.test`, the name Rojo gave the
+-- ModuleScript. SearchSource then appends `?(.lua|.luau)` to every entry
+-- (line 288), so a pattern written without an extension matches under either
+-- route, which is why this one is.
+--
+-- WHY `.test` AND NOT `.spec`, which is what the upstream Getting Started
+-- example uses. `.spec.luau` is already taken in this repo: it is how
+-- `tests/run.luau` finds the Lune suite. Two runners that disagree about which
+-- files are theirs is the kind of overlap that shows up as a spec silently not
+-- running, so the two names are kept apart on purpose. Note that the DEFAULT
+-- `testMatch` would have caught both -- it is
+-- `{ "**/__tests__/**/*", "**/?(*.)+(spec|test)?(.lua|.luau)" }`
+-- (https://roblox.github.io/jest-roblox/configuration) -- which is the other
+-- reason it is set explicitly here rather than left off.
+return {
+	testMatch = { "**/*.test" },
+}
