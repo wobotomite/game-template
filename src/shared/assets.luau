@@ -60,9 +60,34 @@ const ASSETS = {
 
 	-- FONTS the widget kit draws with. Swapping the two entries here restyles
 	-- every label in the game.
-	fonts = {},
+	--
+	-- `Font`, not `Enum.Font`: a Font carries a weight and a style, so one
+	-- family covers a heading and its body without a second asset. Both are
+	-- engine families rather than uploads, so a fresh game has type on screen
+	-- before anything is uploaded -- unlike `icons` below, these are never the
+	-- unset sentinel.
+	fonts = {
+		-- Everything the kit labels: buttons, titles, key caps, slot names.
+		-- SemiBold rather than Bold, because the kit draws an outline behind
+		-- its text and a bold face plus an outline closes up the counters at
+		-- small sizes.
+		HEADING = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.SemiBold),
+		-- Body copy: anything a player reads a line of rather than glances at.
+		-- Monospace, so a column of numbers, a countdown or a typed-out console
+		-- line does not jitter as its digits change width.
+		BODY = Font.fromEnum(Enum.Font.Code),
+	},
 
 	-- ICONS, by name. Input glyphs and widget icons.
+	--
+	-- Every one is an upload, so this table ships EMPTY: the kit asks for an
+	-- icon by name, and a name with no entry here resolves to the unset content
+	-- string and draws nothing. That is the degrade -- a button with a missing
+	-- icon keeps its label, its size and its hit box, so the kit renders and is
+	-- usable before any art exists. Add a key as you upload its image.
+	--
+	-- Keys are snake_case names of the THING, not of the picture, so re-drawing
+	-- the art is one id changing and no call sites moving.
 	icons = {},
 }
 

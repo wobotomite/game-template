@@ -61,11 +61,37 @@ const STRINGS = {
 
 	-- UI. Words the widget kit itself shows: confirm, cancel, close, hold to
 	-- confirm. A feature's own copy goes in that feature's section.
-	ui = {},
+	--
+	-- A window's buttons are KEYED BY THEIR CAPTION (see the UI kit doc), so a
+	-- panel writes `buttons = { [strings.ui.CLOSE] = close }` rather than a
+	-- literal -- which is what keeps the same four words spelled the same way
+	-- on every panel in the game. Upper case because the kit's headings are.
+	ui = {
+		CONFIRM = "CONFIRM",
+		CANCEL = "CANCEL",
+		CLOSE = "CLOSE",
+		-- The caption on a button that must be held down rather than clicked.
+		HOLD = "HOLD TO CONFIRM",
+	},
 
 	-- CONTROLS. Names of inputs as shown in a prompt ("HOLD", "TAP"), and the
 	-- labels on touch buttons.
-	controls = {},
+	controls = {
+		-- How an on-screen prompt asks for each kind of press. The kit names
+		-- the KEY itself from the engine (`GetStringForKeyCode`, or the pad's
+		-- own glyph), so these are only the verb in front of it.
+		TAP = "TAP",
+		HOLD = "HOLD",
+
+		-- Captions for the touch buttons in `src/client/input`, by the id the
+		-- game registers each button under -- the same ids that
+		-- `settings.controls.TOUCH.SLOTS` positions.
+		--
+		-- Empty here: a touch button is one of the game's own actions. A button
+		-- whose id has no caption draws the id instead, which is ugly on
+		-- purpose: it is a missing string, and it should look like one.
+		TOUCH = {},
+	},
 }
 
 deep(STRINGS)
