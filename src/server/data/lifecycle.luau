@@ -4,6 +4,7 @@ const player_data = require(ReplicatedStorage.Shared.services["player-data"])
 const observe_players = require(ReplicatedStorage.Util.observers["observe-players"])
 
 const datastore = require(script.Parent.datastore)
+const leaderboards = require(script.Parent.Parent.leaderboards.service)
 
 -- `player-data` declares a different set of functions per realm, so every one
 -- of them is optional as far as the analyzer is concerned. This file only ever
@@ -100,12 +101,22 @@ function start()
 		-- about thirty seconds here; `closeAsync` yields until lyra has written
 		-- what it holds, and the pcall is because an error thrown inside
 		-- BindToClose would abandon the rest of the shutdown.
+		--
+		-- THE BOARDS ARE BRACKETED AROUND IT, in this order and no other.
+		-- `begin_close` stops the leaderboard worker so that it is not competing
+		-- for DataStore budget with the saves, and returns the deadline it may
+		-- spend afterwards. `close` then writes out the scores those saves just
+		-- made durable -- which is why it runs AFTER rather than alongside:
+		-- before the saves, most of those scores are not confirmed yet and would
+		-- be held back rather than published.
+		const deadline = leaderboards.begin_close()
 		const ok, err = pcall(function()
 			datastore:closeAsync()
 		end)
 		if not ok then
 			warn(`[data] close failed: {tostring(err)}`)
 		end
+		leaderboards.close(deadline)
 	end)
 end
 

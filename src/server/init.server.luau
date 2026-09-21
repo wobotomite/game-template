@@ -9,11 +9,18 @@ const fatal = require(script.boot.fatal)
 -- boot means that failure empties the server instead, honestly.
 --
 -- THIS LIST IS THE SERVER'S ORDER OF OPERATIONS. Every service is a module with
--- a `start()`, started here and nowhere else, so that "what runs on this
--- server, and in what order" is one readable list rather than a guess assembled
--- from whichever files happened to have side effects at require time. Each
--- `start()` is idempotent, so a game that also starts one from somewhere of its
--- own gets one instance, not two.
+-- a `start()`, so that "what runs on this server, and in what order" is one
+-- readable list rather than a guess assembled from whichever files happened to
+-- have side effects at require time. Each `start()` is idempotent, so a game
+-- that also starts one from somewhere of its own gets one instance, not two.
+--
+-- THE TWO EXCEPTIONS, both for the same reason -- something else already has to
+-- require the module, so listing it here would suggest this list decided
+-- something it did not. Each is started by a one-line Script beside its own
+-- module, and each says so in its own header:
+--
+--   * the save's lifecycle, by `src/server/data/data-lifecycle.server.luau`
+--   * the leaderboard workers, by `src/server/leaderboards/leaderboards.server.luau`
 --
 -- ORDER MATTERS ONLY WHERE A COMMENT SAYS IT DOES. Services that need a
 -- player's save register with `lifecycle.on_loaded`, which replays for players

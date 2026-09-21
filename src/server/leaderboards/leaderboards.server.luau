@@ -1,0 +1,14 @@
+-- Starts the leaderboard workers. The work is in
+-- `src/server/leaderboards/service.luau`; this is only the thing that runs it.
+--
+-- WHY NOT A LINE IN THE SERVER BOOT LIST. `src/server/data/datastore/init.luau`
+-- already requires the service -- it has to, it feeds every save into it -- so
+-- listing it in `src/server/init.server.luau` as well would read as though the
+-- boot order decided something here, when the datastore has in fact pulled the
+-- module in before that list is reached. What is started is the two WORKER
+-- loops (write out due scores, re-read the boards), and starting them beside
+-- the service keeps that one fact in one place.
+--
+-- The service's `start()` is idempotent, so a game that also starts it from
+-- somewhere of its own gets one set of workers, not two.
+require(script.Parent.service).start()

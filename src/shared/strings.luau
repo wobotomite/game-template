@@ -67,7 +67,32 @@ const STRINGS = {
 
 	-- LEADERBOARDS. Board titles, column headings, and the three states a board
 	-- can be in besides ready: loading, empty, unavailable.
-	leaderboards = {},
+	leaderboards = {
+		-- One title per key in `settings.leaderboards.ORDER`. A board whose key is
+		-- missing here has no words at all, so a display should fall back to the
+		-- key rather than show nothing.
+		TITLES = {
+			best_score = "BEST SCORE",
+		},
+
+		-- Column headings. Shared by every board: boards differ in what the number
+		-- MEANS -- which is what the title says -- not in their shape.
+		RANK = "#",
+		PLAYER = "PLAYER",
+		SCORE = "SCORE",
+
+		-- What a display shows instead of rows. These line up with the `status`
+		-- field of a board in `src/shared/atoms/leaderboard-atoms.luau`, except
+		-- EMPTY: an empty board is "ready" and correct, it just has nobody on it
+		-- yet, and saying so is friendlier than a blank rectangle.
+		LOADING = "Loading scores...",
+		EMPTY = "No scores yet. Be the first.",
+		UNAVAILABLE = "Scores are unavailable right now.",
+
+		-- Shown ALONGSIDE the rows rather than instead of them: a stale board is
+		-- last refresh's real scores, which is worth more than an empty one.
+		STALE = "Scores may be out of date.",
+	},
 
 	-- DAILY REWARDS. Reward names and the reminder notification parameters.
 	daily = {},

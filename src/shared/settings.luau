@@ -131,7 +131,101 @@ const SETTINGS = {
 	-- read and written, and the OrderedDataStore budgets the worker stays inside.
 	--
 	-- Read by the leaderboard service.
-	leaderboards = {},
+	leaderboards = {
+		-- WHICH SAVED COUNTERS BECOME BOARDS, in display order. Every name here is
+		-- a field of the `progress` struct in `datastore/datastore-schema.luau`, and
+		-- it must be a counter that only ever GROWS: a board cell is written with
+		-- `math.max`, so a value that can go down would stick at its high-water mark
+		-- and never come back down. A board for something that falls (a best TIME)
+		-- stores its negation, or a large constant minus it.
+		--
+		-- An empty list turns the whole subsystem off: no stores are opened, no
+		-- worker writes, no boards are published.
+		ORDER = { "best_score" },
+
+		-- The OrderedDataStore behind each board, by the same key.
+		--
+		-- THE NAME IS THE BOARD. Renaming one does not move or clear anything: the
+		-- old scores sit untouched under the old name and the new name starts
+		-- empty. That is how a season is reset -- bump the suffix -- and it is also
+		-- the accident that silently wipes a live board, so treat these as
+		-- published values rather than labels.
+		STORES = {
+			best_score = "GlobalBestScore_v1",
+		},
+
+		-- Rows fetched and published per board. 100 is the engine's page size for
+		-- `GetSortedAsync`; 50 is more than a screen of names and half the traffic,
+		-- and every row costs a username lookup on top of the read.
+		LIMIT = 50,
+
+		-- How long a board may be out of date. Every refresh is one OrderedRead per
+		-- board for every SERVER, so this number is multiplied by the server count
+		-- against a budget that is not -- two minutes keeps a hundred servers well
+		-- inside it, and nobody watching a top-50 board notices the difference
+		-- between that and ten seconds.
+		REFRESH_SECONDS = 120,
+
+		-- How long a new personal best is held before it is written out. A player
+		-- who beats their score five times in a minute costs ONE write instead of
+		-- five, and the delay is invisible because their own number comes from
+		-- their save, not from the board.
+		WRITE_SECONDS = 30,
+
+		-- How long a failed write waits before it is tried again. Writes fail when
+		-- the request budget is spent, and retrying immediately spends the budget
+		-- that the retry needs.
+		RETRY_SECONDS = 30,
+
+		-- How often the write worker wakes. It does nothing at all unless a score
+		-- is due, so this is the granularity of `WRITE_SECONDS` rather than a cost.
+		WORKER_SECONDS = 1,
+
+		-- The budget the shutdown flush gives itself. Roblox allows a server about
+		-- thirty seconds inside `BindToClose` before it kills it regardless, and
+		-- the save's own close has to happen inside that too -- so this leaves
+		-- headroom rather than claiming the lot.
+		CLOSE_SECONDS = 25,
+
+		-- In Studio the boards are served from this server's own memory (see the
+		-- service), so a refresh costs nothing and can be fast enough to watch a
+		-- score appear on the board while testing.
+		STUDIO_REFRESH_SECONDS = 5,
+
+		-- The largest score that may be published: 2^53 - 1, the biggest integer a
+		-- double holds EXACTLY. Past it, arithmetic starts rounding and two
+		-- different scores compare equal -- and a value that big is a corrupted
+		-- save or an exploit rather than a player, so the board refuses it instead
+		-- of immortalising it at the top.
+		MAX_VALUE = 9007199254740991,
+
+		-- USERNAME CACHE. A board holds user ids; the names are fetched and kept.
+		--
+		-- How long a fetched name is trusted. Names change rarely and a stale one
+		-- is a cosmetic wrong, so six hours trades correctness nobody sees for
+		-- calls nobody has to make.
+		NAME_TTL = 21600,
+
+		-- How long after a failed lookup before that id is asked about again. Two
+		-- minutes, because the failure is almost always a throttle and asking again
+		-- straight away is what caused it.
+		NAME_RETRY = 120,
+
+		-- Ids kept in the cache. Each entry is two short strings and three numbers;
+		-- two thousand of them is well under a megabyte and far more than the
+		-- distinct ids a set of top-50 boards can show.
+		NAME_CACHE_LIMIT = 2000,
+
+		-- Ids per `GetUserInfosByUserIdsAsync` call. 100 is the engine's limit for
+		-- that call; a larger batch is not slower, it throws.
+		NAME_BATCH_SIZE = 100,
+
+		-- The shortest gap between two of those calls. The endpoint is rate limited
+		-- per server, and a cold cache facing several boards at once is exactly the
+		-- moment that limit is hit -- so the batches are spaced rather than the
+		-- failures retried.
+		NAME_BATCH_INTERVAL = 30,
+	},
 
 	-- DAILY REWARDS. The streak schedule, the length of a "day", the grace window,
 	-- and the reminder queue that tells a player a reward is ready.
