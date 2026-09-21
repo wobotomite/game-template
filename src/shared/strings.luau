@@ -95,7 +95,29 @@ const STRINGS = {
 	},
 
 	-- DAILY REWARDS. Reward names and the reminder notification parameters.
-	daily = {},
+	daily = {
+		-- ONE ALERT PER VERDICT of a claim. Every path through the claim says
+		-- something: a claim that answers with silence reads as a broken button,
+		-- and the player presses it again.
+		REWARDED = "<b>DAY {day} CLAIMED</b> · +{reward}",
+		ALREADY_CLAIMED = "<b>ALREADY CLAIMED</b> · COME BACK TOMORROW",
+		-- Only reachable once a game registers a gate with `set_gate`; with no
+		-- gate the rewards are open to everyone and this is never shown.
+		LOCKED = "<b>NOT YET</b> · DAILY REWARDS AREN'T OPEN TO YOU YET",
+		FAILED = "<b>COULD NOT CLAIM</b> · TRY AGAIN LATER",
+
+		-- ONE REWARD, IN WORDS. Used in the alert above and in the reminder
+		-- notification, so `{currency}` is the key from the save -- "coins" --
+		-- rather than a display name. A game with a currency called something
+		-- else than its key writes that mapping here.
+		REWARD = "{amount} {currency}",
+		-- Between two rewards paid on the same day. Only seen by a game whose
+		-- `settings.daily.SCHEDULE` pays more than one currency at once.
+		REWARD_JOIN = ", ",
+
+		-- A claim panel's own labels (a title, the day cells, the button) belong
+		-- here too; the template ships no panel, so it ships none of them.
+	},
 
 	-- LOADING. The cover shown from ReplicatedFirst. Read through the
 	-- `TransitionStrings` alias in `default.project.json`; see `settings.transition`.

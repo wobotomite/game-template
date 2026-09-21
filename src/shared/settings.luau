@@ -231,7 +231,98 @@ const SETTINGS = {
 	-- and the reminder queue that tells a player a reward is ready.
 	--
 	-- Read by the daily reward rules and the reminder scheduler.
-	daily = {},
+	daily = {
+		-- The length of a reward "day", in seconds. The save holds a day NUMBER
+		-- (unix time floored by this), not a timestamp, so every rule in
+		-- `src/shared/economy/daily-rewards.luau` is integer comparison and the
+		-- rollover is the same instant for every player and every server --
+		-- midnight UTC. A shorter day here is a legitimate way to test the whole
+		-- streak flow without waiting a day, and it changes the meaning of every
+		-- `last_day` already saved, so it is not something to tune on a live game.
+		DAY_SECONDS = 86400,
+
+		-- What each day of the streak pays. Index = the day being claimed, and
+		-- each entry is `{ [currency] = amount }` against the names in
+		-- `datastore-schema`'s `currency` struct -- a key that is not a currency
+		-- there is credited into the save and read by nothing.
+		--
+		-- EXAMPLE VALUES, rising so the seventh day is worth coming back for.
+		-- Past the end of this list the LAST entry repeats forever (see `tier`),
+		-- which is the shape that rewards a long streak; a game that would rather
+		-- the week start over says so in that one function.
+		SCHEDULE = {
+			{ coins = 50 },
+			{ coins = 75 },
+			{ coins = 100 },
+			{ coins = 150 },
+			{ coins = 200 },
+			{ coins = 300 },
+			{ coins = 500 },
+		},
+
+		-- How many whole days a player may MISS without losing the streak. 1
+		-- means yesterday and the day before both continue it, so a player who
+		-- misses a single day is not punished for a timezone or a late shift --
+		-- the streak is meant to bring them back, and breaking it on the first
+		-- miss is what stops it doing that. 0 makes the streak strictly daily.
+		GRACE_DAYS = 1,
+
+		-- Rate limit on the claim remote: at most CLAIM_RATE claims per
+		-- CLAIM_WINDOW seconds per player. Generous, because a claim is idempotent
+		-- (the second one this day answers "already claimed" out of the save) and
+		-- this is only here to stop a modified client spending the server's
+		-- DataStore budget on a loop.
+		CLAIM_RATE = 3,
+		CLAIM_WINDOW = 10,
+
+		-- THE REMINDER QUEUE. Optional, and idle until
+		-- `assets.notifications.DAILY_READY` is set to a real notification string
+		-- id. It schedules one experience notification per player for when their
+		-- next reward comes due.
+		REMINDER = {
+			-- The MemoryStoreSortedMap that holds the queue. The name IS the
+			-- queue: changing it abandons every reminder already scheduled.
+			MAP = "DailyRewardReminders",
+
+			-- How long after a claim the next reminder is due. One day, so the
+			-- reminder lands when the next reward actually becomes claimable --
+			-- clamped below to the start of the next reward day, because a claim
+			-- made at 23:00 would otherwise remind them an hour after they could
+			-- already have claimed again.
+			DUE_AFTER = 86400,
+
+			-- How long before the streak would BREAK the reminder must land, at
+			-- the latest. Four hours of margin, so a reminder that is delivered
+			-- late is still delivered in time to be acted on.
+			LEAD = 14400,
+
+			-- How often a server looks for due reminders, plus a random spread so
+			-- that every server in the game does not poll the same map on the same
+			-- second.
+			POLL_SECONDS = 60,
+			POLL_JITTER = 15,
+
+			-- Reminders read per poll. The map is shared by every server, so this
+			-- is a page size rather than a per-server workload.
+			BATCH = 50,
+
+			-- How long a server's claim on one reminder lasts. A server that takes
+			-- an item and then dies mid-send has to release it eventually or that
+			-- player is never reminded; ten minutes is far longer than a send takes
+			-- and short enough that the reminder is still worth sending afterwards.
+			LEASE_SECONDS = 600,
+
+			-- The sort key a sent reminder is moved to. Sort keys order the map and
+			-- the poll reads everything up to "now", so a sent item needs a key
+			-- that sorts after every real due time; a string sorts after every
+			-- number in a MemoryStore sorted map.
+			DONE = "sent",
+
+			-- The Open Cloud notification's category, for the analytics on the
+			-- Creator Dashboard.
+			CATEGORY = "daily_reward",
+		},
+	},
 
 	-- VOICE. Names the per-player audio input the server attaches when the project
 	-- turns the default voice pipeline off.

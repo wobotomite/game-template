@@ -29,6 +29,17 @@ const REMOTES = {
 			step = sendbufs.schema.u8,
 		}),
 	},
+	daily = table.freeze {
+		-- "Claim today's reward." NO PAYLOAD, deliberately: which day is being
+		-- claimed is decided by the server from the player's own save, so there
+		-- is nothing for a modified client to lie about. A `day` field here
+		-- would be a field the server has to ignore, which is a field somebody
+		-- later trusts.
+		--
+		-- The answer comes back as the save itself -- `data.daily` replicates
+		-- through `player-data` -- plus an alert saying which verdict it was.
+		claim = sendbufs.event(),
+	},
 }
 
 table.freeze(REMOTES)

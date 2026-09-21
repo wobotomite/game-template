@@ -39,5 +39,13 @@ fatal.guard("server-boot", function()
 	require(script.players["pass-service"]).start()
 	require(script.players["badge-service"]).start()
 
+	-- DAILY REWARDS. The claim handler, then the reminder poller -- which is a
+	-- no-op unless `assets.notifications.DAILY_READY` names a real notification
+	-- string. Separate services because a game can want the rewards without ever
+	-- sending a notification, and because one of them is a remote handler and the
+	-- other is a loop over a store shared by every server.
+	require(script.players["daily-rewards"]).start()
+	require(script.players["daily-reminders"]).start()
+
 	require(script.players["voice-service"]).start()
 end)
