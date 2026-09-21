@@ -104,6 +104,15 @@ table.sort(mount_segments, function(a, b)
 end)
 
 local function module_at(base: string): string?
+	-- A MOUNT MAY POINT AT A FILE, not only at a directory: `"$path":
+	-- "src/shared/settings.luau"` mounts that one module under a name of the
+	-- project's choosing. `base` is then already the file, and appending
+	-- `.luau` to it asks for `settings.luau.luau`. Without this the aliases
+	-- that put the shared data files into ReplicatedFirst resolve to nothing,
+	-- and the loading cover that requires them looks broken.
+	if fs.isFile(base) then
+		return base
+	end
 	for _, candidate in { `{base}.luau`, `{base}/init.luau` } do
 		if fs.isFile(candidate) then
 			return candidate

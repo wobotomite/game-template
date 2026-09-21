@@ -85,6 +85,13 @@ end
 -- ============================== resolution ================================
 
 local function exists(base: string): string?
+	-- A MOUNT MAY POINT AT A FILE. `"$path": "src/shared/settings.luau"` mounts
+	-- that one module under a name of the project's choosing -- which is how
+	-- the shared data files reach ReplicatedFirst -- so `base` can already be
+	-- the file, and the candidates below would ask for `settings.luau.luau`.
+	if fs.isFile(base) then
+		return base
+	end
 	for _, candidate in { `{base}.luau`, `{base}/init.luau`, `{base}.lua`, `{base}/init.lua` } do
 		if fs.isFile(candidate) then
 			return candidate

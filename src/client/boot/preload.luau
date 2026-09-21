@@ -41,6 +41,24 @@ local total_count = 0
 local finished_flag = false
 local started = false
 
+-- PreloadAsync's per-asset status callback. Without it the whole pass is
+-- silent about the one thing it is in a position to notice: an id that will
+-- never resolve. A moderated, delisted or simply mistyped id is not an error
+-- anywhere else in the game either -- a Sound plays nothing, an ImageLabel
+-- draws nothing, and neither raises anything -- so this warn is usually the
+-- ONLY report that asset is dead, and it names the id so the grep in
+-- `src/shared/assets.luau` is one step.
+--
+-- Warns rather than throws: one bad id must not take the rest of the pass, and
+-- "this asset is missing" is a content problem to fix before a publish, not a
+-- reason to hold the player at a loading screen.
+local function report(content_id: string, status: Enum.AssetFetchStatus)
+	if status == Enum.AssetFetchStatus.Success then
+		return
+	end
+	warn(`[preload] '{content_id}' failed to load ({status.Name}) -- anything that plays or draws it is silently blank`)
+end
+
 -- ============================== sounds ====================================
 
 -- Every sound id gets a STATIC Sound instance, parented and kept for the whole
@@ -115,7 +133,7 @@ local function warm_sounds(ids: { string })
 		-- pcall, because ONE delisted or moderated id makes PreloadAsync throw.
 		-- Without the pcall a single dead sample costs the rest of the pass;
 		-- without the chunking it costs the entire warm-up.
-		pcall(ContentProvider.PreloadAsync, ContentProvider, chunk)
+		pcall(ContentProvider.PreloadAsync, ContentProvider, chunk, report)
 		done_count += #chunk
 		task.wait()
 	end
@@ -125,7 +143,7 @@ end
 local function warm_ids(ids: { string })
 	for first = 1, #ids, CHUNK do
 		const chunk = table.move(ids, first, math.min(first + CHUNK - 1, #ids), 1, {})
-		pcall(ContentProvider.PreloadAsync, ContentProvider, chunk)
+		pcall(ContentProvider.PreloadAsync, ContentProvider, chunk, report)
 		done_count += #chunk
 		task.wait()
 	end
@@ -140,7 +158,7 @@ local function warm_instances(instances: { Instance })
 	if #instances == 0 then
 		return
 	end
-	pcall(ContentProvider.PreloadAsync, ContentProvider, instances)
+	pcall(ContentProvider.PreloadAsync, ContentProvider, instances, report)
 	done_count += #instances
 end
 

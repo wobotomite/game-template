@@ -21,7 +21,8 @@ effects.new("common/ground-telegraph", nil, {
 effects/
   init.luau           the registry: new(name, instances, attributes)
   effect-types.luau   the types, and the generated union of valid names
-  shared/             helpers effects share (floor probe + inert decal)
+  shared/             the kit: floor probe, particle burst, expanding ring,
+                      inert copy of a live object
   list/               ONE FILE PER EFFECT -- this is the part you edit
     common/           ground-telegraph (the one example; write yours beside it)
 ```
@@ -86,13 +87,26 @@ almost always a leak.
 Each entry plays its own cue, so one file is the complete moment and look and
 sound can be retuned together.
 
-The one rule worth stating: **telegraphs are silent.** A telegraph is the
-WARNING half of an attack and the arriving half carries the sound. A cue on the
-windup *and* another on the hit reads as two events, and players dodge the first
-one.
+Two exceptions, and they are the same exception twice: **telegraphs are
+silent**, and so is a generic kit piece in `shared/` whose caller supplies the
+moment. A telegraph is the WARNING half of an attack and the arriving half
+carries the sound — a cue on the windup *and* another on the hit reads as two
+events, and players dodge the first one. A `shared/` helper is one step further
+along the same line: `burst` does not know whether it is a spark, a splash or a
+footfall, so a sound in it would be the same sound for all three.
+
+The general form: **the sound belongs to whoever knows what the moment means.**
+That is usually the `list/` entry, which is the whole point of one-file-per-
+effect. Where it is not is anything that depends on WHO — a cue that is a
+character's voice, or that should be quieter for a bystander than for the player
+it happened to, belongs to the caller's own audio module and not to the effect
+drawing the body, because only the caller knows whether that character is the
+one at the keyboard.
 
 Keep ids and mix levels in a record, and reach for a named level rather than a
-number — see `src/client/audio/sound-groups.luau` for why every cue wants a bus.
+number — see `src/client/audio/sound-groups.luau` for why every cue wants a bus,
+and `Client.audio.cue` for the scheduler that decides which of them survives a
+crowded moment.
 
 ## Two failures this folder is shaped around
 

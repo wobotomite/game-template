@@ -50,13 +50,45 @@ const ASSETS = {
 	-- SOUNDS the cue engine plays, by cue name. `rbxasset://sounds/...` engine
 	-- sounds are fine for a graybox; only some of those paths exist, and a wrong one
 	-- is silent. Check `Sound.TimeLength > 0` in Studio before trusting a new id.
-	sounds = {},
+	--
+	-- `""` means not uploaded yet: the cue bus warns ONCE naming the cue and
+	-- stays silent, so a fresh game boots with no audio configured and says so
+	-- rather than playing nothing for a reason nobody can find.
+	--
+	-- These six are the interface's own voice (`Client.audio.ui-sounds`) and
+	-- are the only ones the template itself names -- every other cue belongs to
+	-- the game and goes in next to them.
+	sounds = {
+		-- The cursor crossing something interactive. Fires constantly on a
+		-- list, so it wants to be short and nearly inaudible.
+		UI_HOVER = "",
+		UI_CLICK = "",
+		-- A panel arriving and leaving. Two sounds rather than one: an
+		-- interface where opening and closing sound alike gives no feedback
+		-- about which just happened.
+		UI_OPEN = "",
+		UI_CLOSE = "",
+		-- Money left the player's account. The one interface sound that should
+		-- be unmistakable.
+		PURCHASE = "",
+		-- The default voice for an alert that does not bring its own.
+		ALERT = "",
+	},
 
 	-- MUSIC playlists, by name. Each is an array of content ids.
 	music = {},
 
 	-- TEXTURES the effect primitives draw with.
-	textures = {},
+	textures = {
+		-- A REAL VALUE RATHER THAN THE `""` STUB, and the only entry in this file
+		-- that gets to be one: `rbxasset://` is not an upload, it is a file that
+		-- ships inside the engine, so it resolves on a place that has never
+		-- published anything. This particular one is the stock ParticleEmitter
+		-- texture -- a soft-edged square -- which is what `effects.shared.burst`
+		-- falls back to so that a burst with no art chosen still draws something
+		-- instead of drawing nothing and looking broken.
+		SQUARE = "rbxasset://textures/particles/SquareParticle.png",
+	},
 
 	-- FONTS the widget kit draws with. Swapping the two entries here restyles
 	-- every label in the game.
