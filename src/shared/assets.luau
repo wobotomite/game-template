@@ -31,7 +31,10 @@ const ASSETS = {
 	-- `0` means not created yet; the products record skips it.
 	--
 	-- Create them on the Creator Dashboard, then paste the ids here.
-	products = {},
+	products = {
+		COINS_SMALL = 0,
+		COINS_LARGE = 0,
+	},
 
 	-- GAME PASSES, by key. `0` means not created yet.
 	--
@@ -41,11 +44,26 @@ const ASSETS = {
 	-- BADGES, by key. `0` means not created yet.
 	--
 	-- The badge service skips an unset badge and warns once.
-	badges = {},
+	badges = {
+		-- Awarded the first time a player's data loads, by the lifecycle
+		-- fan-out. An EXAMPLE, and the one badge nearly every game wants.
+		WELCOME = 0,
+	},
 
 	-- EXPERIENCE NOTIFICATION STRING IDS (Creator Dashboard -> Notifications).
 	-- `""` means not created yet; the reminder scheduler then stays idle.
-	notifications = {},
+	notifications = {
+		-- Sent when a player's next daily reward comes due. A notification
+		-- string is authored on the Creator Dashboard, not here -- this is only
+		-- its id -- and it must declare the parameters `day` and `reward`, which
+		-- is what `src/server/players/daily-reminders.luau` fills in.
+		--
+		-- SENDING ALSO NEEDS THE OPEN CLOUD PACKAGE in ServerScriptService
+		-- (`OpenCloud.V2.UserNotification`), which is a Roblox-published model
+		-- rather than anything this repo can vendor. With the id set and the
+		-- package missing, the scheduler warns once and stays idle.
+		DAILY_READY = "",
+	},
 
 	-- SOUNDS the cue engine plays, by cue name. `rbxasset://sounds/...` engine
 	-- sounds are fine for a graybox; only some of those paths exist, and a wrong one

@@ -58,14 +58,78 @@ const STRINGS = {
 
 	-- COMMERCE. Product and pass names and descriptions, by the same KEY as
 	-- `settings.commerce.PRODUCTS`, and the line shown when a purchase is granted.
-	commerce = {},
+	commerce = {
+		-- Shouted at the buyer once the grant is SAVED, not when the receipt
+		-- arrives: a line that says the purchase landed before it is durable is
+		-- a line the player can be shown twice, or shown for a grant that was
+		-- then lost.
+		GRANTED = "<b>PURCHASE RECEIVED</b> · {name}",
+
+		-- By the same KEY as `settings.commerce.PRODUCTS`. Both rows here are
+		-- the examples that section ships; rename them together or the products
+		-- record will assert on the mismatch at boot, which is the point.
+		PRODUCTS = {
+			COINS_SMALL = { name = "100 COINS", description = "A handful of coins." },
+			COINS_LARGE = { name = "1,000 COINS", description = "A pile of coins." },
+		},
+
+		-- By the same KEY as `assets.passes`. Empty until the game has a pass.
+		PASSES = {},
+	},
 
 	-- LEADERBOARDS. Board titles, column headings, and the three states a board
 	-- can be in besides ready: loading, empty, unavailable.
-	leaderboards = {},
+	leaderboards = {
+		-- One title per key in `settings.leaderboards.ORDER`. A board whose key is
+		-- missing here has no words at all, so a display should fall back to the
+		-- key rather than show nothing.
+		TITLES = {
+			best_score = "BEST SCORE",
+		},
+
+		-- Column headings. Shared by every board: boards differ in what the number
+		-- MEANS -- which is what the title says -- not in their shape.
+		RANK = "#",
+		PLAYER = "PLAYER",
+		SCORE = "SCORE",
+
+		-- What a display shows instead of rows. These line up with the `status`
+		-- field of a board in `src/shared/atoms/leaderboard-atoms.luau`, except
+		-- EMPTY: an empty board is "ready" and correct, it just has nobody on it
+		-- yet, and saying so is friendlier than a blank rectangle.
+		LOADING = "Loading scores...",
+		EMPTY = "No scores yet. Be the first.",
+		UNAVAILABLE = "Scores are unavailable right now.",
+
+		-- Shown ALONGSIDE the rows rather than instead of them: a stale board is
+		-- last refresh's real scores, which is worth more than an empty one.
+		STALE = "Scores may be out of date.",
+	},
 
 	-- DAILY REWARDS. Reward names and the reminder notification parameters.
-	daily = {},
+	daily = {
+		-- ONE ALERT PER VERDICT of a claim. Every path through the claim says
+		-- something: a claim that answers with silence reads as a broken button,
+		-- and the player presses it again.
+		REWARDED = "<b>DAY {day} CLAIMED</b> · +{reward}",
+		ALREADY_CLAIMED = "<b>ALREADY CLAIMED</b> · COME BACK TOMORROW",
+		-- Only reachable once a game registers a gate with `set_gate`; with no
+		-- gate the rewards are open to everyone and this is never shown.
+		LOCKED = "<b>NOT YET</b> · DAILY REWARDS AREN'T OPEN TO YOU YET",
+		FAILED = "<b>COULD NOT CLAIM</b> · TRY AGAIN LATER",
+
+		-- ONE REWARD, IN WORDS. Used in the alert above and in the reminder
+		-- notification, so `{currency}` is the key from the save -- "coins" --
+		-- rather than a display name. A game with a currency called something
+		-- else than its key writes that mapping here.
+		REWARD = "{amount} {currency}",
+		-- Between two rewards paid on the same day. Only seen by a game whose
+		-- `settings.daily.SCHEDULE` pays more than one currency at once.
+		REWARD_JOIN = ", ",
+
+		-- A claim panel's own labels (a title, the day cells, the button) belong
+		-- here too; the template ships no panel, so it ships none of them.
+	},
 
 	-- LOADING. The cover shown from ReplicatedFirst. Read through the
 	-- `TransitionStrings` alias in `default.project.json`; see `settings.transition`.

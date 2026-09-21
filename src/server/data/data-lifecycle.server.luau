@@ -1,28 +1,9 @@
-const ReplicatedStorage = game:GetService "ReplicatedStorage"
-
-const player_data = require(ReplicatedStorage.Shared.services["player-data"])
-const observe_players = require(ReplicatedStorage.Util.observers["observe-players"])
-
-const datastore = require(script.Parent.datastore)
-
-observe_players(function(player: Player): () -> ()
-	datastore:load(player):catch(function(err)
-		-- Playing without loaded data means nothing saves — silent progress
-		-- loss. Log it and kick honestly instead (lyra already retried).
-		warn(`[data] load failed for {player.Name}: {tostring(err)}`)
-		if player.Parent then
-			pcall(player.Kick, player, "Your save data couldn't be loaded. Please rejoin!")
-		end
-	end)
-	return function()
-		player_data.clear(player)
-		-- May already be unloaded (save-before-teleport releases the session).
-		datastore:unload(player):catch(function() end)
-	end
-end)
-
-game:BindToClose(function()
-	pcall(function()
-		datastore:closeAsync()
-	end)
-end)
+-- Starts the save lifecycle. The work is in `src/server/data/lifecycle.luau`;
+-- this is only the thing that runs it.
+--
+-- WHY THE SPLIT. Services register a post-load callback with that module
+-- (`on_loaded`), and a Script cannot be required -- so the body has to live in
+-- a ModuleScript and something has to start it. The two names differ because
+-- Rojo would otherwise see two children called `data-lifecycle` and the require
+-- path would be ambiguous.
+require(script.Parent.lifecycle).start()
