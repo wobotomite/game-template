@@ -79,9 +79,8 @@ if not sync.wait_for_attach(player, 10) then
 end
 ```
 
-`start()` is idempotent, and `src/server/net/start-sync.server.luau` is the
-one-line script that calls it. A game with a boot list calls `start()` from
-there instead and deletes the script.
+`start()` is idempotent, and the boot list in `src/server/init.server.luau`
+calls it first, before anything can register an atom or yield.
 
 The waiter is a coroutine parked on `coroutine.yield`, woken either by the
 attach or by a `task.delay` timeout, whichever comes first, with a `settled`

@@ -18,8 +18,7 @@ const server_network = require(script.Parent["server-network"])
 --     `start()` in the boot list is a line you can read and move.
 --   * `wait_for_attach` below has to be callable, and a script exports nothing.
 --
--- `start-sync.server.luau` beside this file is the one-line script that calls
--- it, for a game that has no boot list of its own yet.
+-- The boot list in `src/server/init.server.luau` calls it, first.
 
 -- Minimum gap between full snapshots for one player, so a client cannot spam
 -- us into rebuilding its whole state every frame.

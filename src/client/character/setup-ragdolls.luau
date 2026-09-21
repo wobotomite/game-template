@@ -40,46 +40,9 @@ const LIMP_STATES = {
 	[Enum.HumanoidStateType.Physics] = true,
 }
 
--- ============================ THE JOINT LIMITS ============================
---
--- A BallSocketConstraint with `LimitsEnabled` off is free in all three axes.
--- A rig assembled entirely out of free sockets is a physics object rather than
--- a body: elbows fold the wrong way, a forearm spins around its own length,
--- and the head rotates past the shoulders. The limits are what make the same
--- simulation produce a pose a player reads as a person.
---
--- Degrees. `UpperAngle` is the half-angle of the cone the socket may swing
--- within; the twist pair is rotation about the joint's own axis, written
--- symmetrically (-twist, +twist) because no joint on a stock rig is lopsided.
---
--- THE THREE GROUPS exist because one number cannot serve all of them. The
--- geometry, not a preference:
---
---   torso   the least swing, the most twist. Give the waist a limb's 70-degree
---           cone and the body folds in half at the middle.
---   limbs   the most swing, the least twist. A limb's range IS its swing arc;
---           twist along the bone is the axis it barely has.
---   neck    tighter than either, and tighter again when the far side of the
---           joint is the Head -- which is the part a viewer is looking at, and
---           so the one where an impossible angle is unmistakable.
---
--- The figures themselves are carried over unchanged from the game this came
--- from; they are a starting point that produced a readable corpse on a stock
--- rig, not a derivation. Retune them per game.
---
--- THEY WANT TO LIVE IN `settings.character`, next to the rest of the numbers
--- the two halves of character setup share. They are local constants here
--- because that section is owned by another lane of this port -- moving them is
--- a one-line change and an integrator's job, not this file's.
-const RAGDOLL_JOINT = {
-	TORSO_TWIST = 45,
-	TORSO_SWING = 35,
-	LIMB_TWIST = 20,
-	LIMB_SWING = 70,
-	NECK_TWIST = 30,
-	NECK_SWING = 30,
-	HEAD_SWING = 25,
-}
+-- THE JOINT LIMITS are `settings.character.RAGDOLL_JOINT`, with the reasoning
+-- for the three groups written beside the numbers.
+const RAGDOLL_JOINT = require(ReplicatedStorage.Shared.settings).character.RAGDOLL_JOINT
 
 -- util/ragdolls names every socket it builds after the Motor6D it stands in
 -- for, behind this prefix. Matching on it rather than on `IsA` alone is what

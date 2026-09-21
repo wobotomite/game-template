@@ -49,10 +49,10 @@ sendbufs guarantees payload **shape** — a buffer schema cannot decode into the
 wrong types. It guarantees nothing about **values** or **rates**, and both are
 what a modified client sends.
 
-Use `server/validate`:
+Use `src/server/net/validate.luau`:
 
 ```luau
-const validate = require(ServerScriptService.Server.validate)
+const validate = require(ServerScriptService.Server.net.validate)
 
 const limit = validate.limiter(10, 5) -- 10 per 5s, per player
 
@@ -82,23 +82,12 @@ both. NaN in particular poisons every comparison it touches — `n > max` and
 `n < min` are both false — so a range check written the obvious way passes it
 straight through.
 
-### The rate-limit boundary, in both directions
+### The rate limit
 
-`validate.limiter` is a **tumbling** window: it allows `max_count` calls per
-window and resets wholesale rather than tracking timestamps. That is the cheap
-implementation, and it has one consequence in each direction:
-
-- **Attacker side:** a caller can land `max_count` at the very end of one window
-  and `max_count` again at the start of the next. The real worst case is **2x
-  max_count** in a short span. Size limits against that, not against
-  `max_count`.
-- **Legitimate side:** a client sending at exactly the cap **loses sends** to
-  the boundary, because its own cadence and the window edge drift against each
-  other. A sender that must not be throttled needs headroom under the cap, not
-  equality with it.
-
-A true sliding window (a timestamp ring per player) is stricter and costs more.
-Pick deliberately; do not assume you have one.
+`validate.limiter` is a sliding ring of timestamps per player, and a rejected
+call does not consume a slot. How it behaves at the edges, what it costs and why
+it replaced a tumbling window are in `docs/server-hardening.md`, which owns the
+whole of `src/server/net/validate.luau`.
 
 ## Dead fields
 

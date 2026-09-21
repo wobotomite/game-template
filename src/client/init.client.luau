@@ -2,10 +2,12 @@ const Players = game:GetService "Players"
 const ReplicatedFirst = game:GetService "ReplicatedFirst"
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
+const alert = require(ReplicatedStorage.Shared.services.alert)
 const app = require(script.ui.app)
 const vide = require(ReplicatedStorage.Packages.vide)
 const preload = require(script.boot.preload)
 const wait_for_loaded = require(script.boot["wait-for-loaded"])
+const ui_sounds = require(script.audio["ui-sounds"])
 const assets = require(ReplicatedStorage.Shared.assets)
 const TRANSITION = require(ReplicatedStorage.Shared.settings).transition
 
@@ -46,6 +48,10 @@ gather(assets.sounds, cues)
 
 const music: { string } = {}
 gather(assets.music, music)
+
+-- ALERTS GET THEIR VOICE before anything can raise one. `alert` is shared with
+-- the server and cannot require client audio itself, so it takes the function.
+alert.set_voice(ui_sounds.alert)
 
 -- STARTED FIRST AND NOT WAITED ON. `start` returns immediately and warms on its
 -- own thread, so the whole pass overlaps the data sync and the spawn below

@@ -45,11 +45,11 @@ const SETTINGS = {
 	-- Read by `src/server/net`.
 	net = {},
 
-	-- ALERTS. The toast stack: how many are visible at once, how long one lives,
-	-- and the keyword colouring `src/shared/services/alert.luau` applies to a
-	-- shouted line.
+	-- ALERTS. The keyword colouring `src/shared/services/alert.luau` applies to a
+	-- shouted line. How the toast stack LOOKS (how many are visible, how long one
+	-- lives) is the client page's, in `ui.ALERTS` below.
 	--
-	-- Read by `src/shared/services/alert.luau` and the client alert page.
+	-- Read by `src/shared/services/alert.luau`.
 	alerts = {
 		-- Words the alert service colours wherever they appear in a line, as
 		-- WORD AND COLOUR TOGETHER rather than split across `strings` and here:
@@ -124,6 +124,43 @@ const SETTINGS = {
 		-- Raise it for the fast thing; do not raise it "to be safe", because
 		-- every stud of headroom is a stud a speed hack gets for free.
 		TOP_SPEED = 28,
+
+		-- THE RAGDOLL'S JOINT LIMITS, read by
+		-- `src/client/character/setup-ragdolls.luau`.
+		--
+		-- A BallSocketConstraint with `LimitsEnabled` off is free in all three axes.
+		-- A rig assembled entirely out of free sockets is a physics object rather than
+		-- a body: elbows fold the wrong way, a forearm spins around its own length,
+		-- and the head rotates past the shoulders. The limits are what make the same
+		-- simulation produce a pose a player reads as a person.
+		--
+		-- Degrees. `UpperAngle` is the half-angle of the cone the socket may swing
+		-- within; the twist pair is rotation about the joint's own axis, written
+		-- symmetrically (-twist, +twist) because no joint on a stock rig is lopsided.
+		--
+		-- THE THREE GROUPS exist because one number cannot serve all of them. The
+		-- geometry, not a preference:
+		--
+		--   torso   the least swing, the most twist. Give the waist a limb's 70-degree
+		--           cone and the body folds in half at the middle.
+		--   limbs   the most swing, the least twist. A limb's range IS its swing arc;
+		--           twist along the bone is the axis it barely has.
+		--   neck    tighter than either, and tighter again when the far side of the
+		--           joint is the Head -- which is the part a viewer is looking at, and
+		--           so the one where an impossible angle is unmistakable.
+		--
+		-- The figures themselves are carried over unchanged from the game this came
+		-- from; they are a starting point that produced a readable corpse on a stock
+		-- rig, not a derivation. Retune them per game.
+		RAGDOLL_JOINT = {
+			TORSO_TWIST = 45,
+			TORSO_SWING = 35,
+			LIMB_TWIST = 20,
+			LIMB_SWING = 70,
+			NECK_TWIST = 30,
+			NECK_SWING = 30,
+			HEAD_SWING = 25,
+		},
 	},
 
 	-- COMMERCE. Developer products and game passes as SHAPE: what a product grants,

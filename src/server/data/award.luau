@@ -4,11 +4,15 @@ local alert = require(ReplicatedStorage.Shared.services.alert)
 local currencies = require(ReplicatedStorage.Shared.records.currencies)
 local humanize_reward = require(ReplicatedStorage.Shared["item-util"]["humanize-reward"])
 local parse_reward = require(ReplicatedStorage.Shared["item-util"]["parse-reward"])
+local strings = require(ReplicatedStorage.Shared.strings)
 
 local datastore = require(script.Parent.datastore)
 
 local function fire_alert(player: Player, reward: string)
-	alert.send_to(player, `GOT {humanize_reward(reward :: parse_reward.RewardString)}`)
+	alert.send_to(
+		player,
+		strings.fill(strings.alerts.REWARDED, { reward = humanize_reward(reward :: parse_reward.RewardString) })
+	)
 end
 
 -- Applies a reward string (e.g. "currency/coins/100") to a player's saved data.

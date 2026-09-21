@@ -5,7 +5,7 @@ const sync_registry = require(ReplicatedStorage.Shared.services["sync-registry"]
 const client_network = require(script.Parent["client-network"])
 
 -- Retry cadence for the snapshot request. The first gap is deliberately longer
--- than sync.server's REQUEST_COOLDOWN (1s) so a retry is never debounced away
+-- than `net/sync`'s REQUEST_COOLDOWN (1s) so a retry is never debounced away
 -- by the very attach it is chasing.
 const RETRY_MIN = 1.5
 const RETRY_MAX = 8
@@ -43,7 +43,7 @@ queue_request()
 -- no listeners — there is no queue), and server boot order is not fixed.
 -- A place script that creates the remotes and then yields — the run
 -- orchestrator requires server-network and then builds rooms, the datastore
--- module probes the API — can leave sync.server unconnected for exactly the
+-- module probes the API — can leave `net/sync` unconnected for exactly the
 -- frames the client needs to ask. Losing that one event used to strand the
 -- client forever: no data atom, so wait-for-loaded never returns and nothing
 -- ever errors. Keep asking until a payload proves otherwise.

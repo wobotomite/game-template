@@ -40,7 +40,18 @@ scripts/analyze.sh --counts  # per-file diagnostic counts, for diffing
 - **[docs/testing.md](docs/testing.md)** — how the specs work, and the rules that
   exist because breaking them produced a *green run over broken code*.
 - **[docs/network.md](docs/network.md)** — sendbufs has no queue, and what
-  follows from that; hardening remote handlers; the rate-limit boundary.
+  follows from that; hardening remote handlers.
+- **[docs/server-hardening.md](docs/server-hardening.md)** — the sliding-ring
+  limiter and the payload validators, the startable atom sync, dressed alerts,
+  and the Studio-only debug commands.
+- **[docs/services.md](docs/services.md)** — the server's boot list: receipts,
+  passes, badges, daily rewards, leaderboards, voice, and the save lifecycle
+  they hang from.
+- **[docs/client-boot-and-audio.md](docs/client-boot-and-audio.md)** — the
+  loading cover and the order the client boots in; the cue bus that decides
+  what is heard when everything fires at once.
+- **[docs/ui-kit.md](docs/ui-kit.md)** — one require for every widget a panel is
+  built from, the menu state, and the touch and gamepad layers.
 - **[docs/models.md](docs/models.md)** — Logic/Structure/Deco, tag lookup, and
   why `FindFirstChild "X" :: BasePart` fails a page away from the mistake.
 - **[docs/multi-place.md](docs/multi-place.md)** — opt-in. One build, many

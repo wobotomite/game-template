@@ -26,7 +26,13 @@ const fatal = require(script.boot.fatal)
 -- player's save register with `lifecycle.on_loaded`, which replays for players
 -- already loaded, so a late registration cannot miss anyone.
 fatal.guard("server-boot", function()
-	-- FIRST, always. Every service below either reads a save or writes one, and
+	-- THE ATOM HANDSHAKE, before anything below can register an atom or yield.
+	-- `start()` only connects `request_sync`, so it cannot fail the way the
+	-- datastore can, and sendbufs has no queue: a client that asks before this
+	-- line has run is never answered. See `src/server/net/sync.luau`.
+	require(script.net.sync).start()
+
+	-- BEFORE EVERY SERVICE. Every service below either reads a save or writes one, and
 	-- this is what fails when the DataStore API is unreachable -- which is a
 	-- failure the whole server should die of, here, rather than one discovered
 	-- an hour in when nothing has been saving. The save's own lifecycle (load,

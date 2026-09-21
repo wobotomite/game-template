@@ -38,7 +38,10 @@ const STRINGS = {
 
 	-- ALERTS. Lines the server shouts at a player through
 	-- `src/shared/services/alert.luau` that are not owned by a feature below.
-	alerts = {},
+	alerts = {
+		-- `src/server/data/award.luau`, for every reward string it applies.
+		REWARDED = "GOT {reward}",
+	},
 
 	-- DEBUG. What the Studio-only commands report back. Never seen by a player,
 	-- kept here so the debug menu and the command script agree on the text.
