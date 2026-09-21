@@ -33,16 +33,44 @@ const tracked: { RaycastParams } = {}
 
 local observing = false
 
+function apply()
+	for _, params in tracked do
+		params.FilterDescendantsInstances = characters
+	end
+end
+
 function refresh()
 	table.clear(characters)
 	for _, player in Players:GetPlayers() do
 		const character = player.Character
-		if character then
+		-- `.Parent` as well as existence. `player.Character` keeps pointing at a
+		-- model for a while after that model leaves the DataModel -- a respawn
+		-- reassigns it, but a death, a `:Destroy()` or a leaver does not, and
+		-- until something reassigns it the reference is live and the model is
+		-- not. Excluding a parentless model is harmless to the ray and a slow
+		-- leak in the filter: the engine holds every instance in the list, so a
+		-- server that respawned a thousand times kept a thousand corpses alive
+		-- because a RaycastParams still named them.
+		if character and character.Parent then
 			table.insert(characters, character)
 		end
 	end
-	for _, params in tracked do
-		params.FilterDescendantsInstances = characters
+	apply()
+end
+
+-- Drop ONE character, by identity, instead of rebuilding the list.
+--
+-- This is what a teardown wants and `refresh()` was doing badly. A character
+-- teardown runs while that character is on its way out, and whether
+-- `player.Character` has been cleared yet by then is a race: rebuild too early
+-- and the corpse is still in the rebuilt list, with nothing scheduled to
+-- remove it until the NEXT spawn. Removing the exact model the observer was
+-- given has no such ordering question in it.
+function forget(character: Instance)
+	const at = table.find(characters, character)
+	if at then
+		table.remove(characters, at)
+		apply()
 	end
 end
 
@@ -64,9 +92,12 @@ function track(params: RaycastParams)
 	if not observing then
 		observing = true
 		observe_players(function(player)
-			return observe_character(player, function()
+			return observe_character(player, function(character)
 				refresh()
-				return refresh -- and again when that character goes away
+				-- and drop exactly this one when that character goes away
+				return function()
+					forget(character)
+				end
 			end)
 		end)
 	end

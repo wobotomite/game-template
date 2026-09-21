@@ -2,6 +2,7 @@ const ReplicatedStorage = game:GetService "ReplicatedStorage"
 
 const observe_players = require(ReplicatedStorage.Util.observers["observe-players"])
 const physics_step = require(ReplicatedStorage.Util.events["physics-step"])
+const settings = require(ReplicatedStorage.Shared.settings)
 
 const heuristics = require(script.heuristics)
 
@@ -45,10 +46,29 @@ const heuristics = require(script.heuristics)
 -- and check each one; there is no way to detect this from inside.
 
 const SAMPLE_INTERVAL = 0.5 -- seconds between movement samples
-const SPEED_LIMIT_FLOOR = 45 -- studs/s; below this never flags regardless of WalkSpeed
 const SPEED_LIMIT_SLACK = 1.6 -- multiplier over server WalkSpeed (jump arcs, shoves)
+-- studs/s; below this the speed heuristic never flags, whatever WalkSpeed says.
+--
+-- DERIVED from the game's own top speed rather than written here. The floor
+-- exists for movement the server does not spell out as `Humanoid.WalkSpeed` --
+-- a vehicle, a launcher, a conveyor, a swim multiplier -- and a literal here
+-- has no way to know about any of it. A game that adds a fast loadout and
+-- forgets this number kicks its own players for using it; one that removes a
+-- fast loadout leaves the floor above everything, and the speed heuristic
+-- quietly stops detecting anything at all.
+--
+-- settings.character.TOP_SPEED x SLACK is 45 as shipped, which is exactly the
+-- constant this replaced -- so nothing changes until a game raises it.
+const SPEED_LIMIT_FLOOR = math.ceil(settings.character.TOP_SPEED * SPEED_LIMIT_SLACK)
 const SPEED_SUSTAIN_SAMPLES = 3 -- consecutive hot samples before a strike
 const BLINK_DISTANCE = 120 -- studs in one sample = teleport, not movement
+
+-- What `observed_speed` keeps of the previous sample: half, so an old reading
+-- is worth a quarter two samples later and nothing within a second. Sampling
+-- is every SAMPLE_INTERVAL, and without the memory a reader that happens to
+-- ask between two samples sees whatever the last one measured with no sense of
+-- how stale it is; with it, a stale reading decays toward 0 instead.
+const SPEED_MEMORY = 0.5
 
 const METRONOME: heuristics.MetronomeConfig = table.freeze {
 	min_events = 20,
@@ -68,6 +88,7 @@ type Entry = {
 	last_decay: number,
 	last_position: Vector3?, -- nil re-anchors the next sample (forgive)
 	hot_samples: number,
+	observed_speed: number, -- decayed studs/s, server-measured; see observed_speed()
 	-- Latch per held input, so only the off->on edge counts as a press.
 	holds: { [string]: boolean },
 	intents: { [string]: { number } },
@@ -142,6 +163,29 @@ function note_hold(player: Player, kind: string, active: boolean)
 	entry.holds[kind] = active
 end
 
+-- How fast the SERVER last saw this player actually move, in studs/s, decayed
+-- toward 0 between samples. 0 for a player with no living character, and 0 for
+-- one this never sampled.
+--
+-- WHY ANYTHING WOULD ASK. The obvious source of a player's speed is
+-- `root.AssemblyLinearVelocity`, and on a character the server does not own it
+-- is the last value that player's client replicated -- which is 0 for an
+-- assembly that has gone to sleep, and 0 for a client that simply has not sent
+-- one recently. A server rule written against it ("a thrown object may not
+-- outrun its thrower by more than X") therefore punishes a moving player at
+-- random. This is measured from position deltas the server took itself, so it
+-- cannot be stalled by withholding replication, and it is a FLOOR to be taken
+-- alongside the velocity rather than a replacement for it: it lags a real
+-- change by up to a sample.
+--
+-- Unlike the speed heuristic below this is the full 3D magnitude. The
+-- heuristic drops Y because falling is not cheating; a caller asking how fast
+-- a body is moving wants the speed it is really moving at.
+function observed_speed(player: Player): number
+	const entry = entries[player]
+	return if entry then entry.observed_speed else 0
+end
+
 -- Call after ANY server-initiated position change -- spawn, respawn,
 -- out-of-bounds rescue, checkpoint, cutscene, debug jump -- so the jump does
 -- not read as a blink. See the contract note at the top: a missed call kicks
@@ -162,6 +206,10 @@ function sample_movement(entry: Entry, player: Player, dt: number)
 		-- Dead characters ragdoll and get flung; don't score them.
 		entry.last_position = nil
 		entry.hot_samples = 0
+		-- Straight to 0, not decayed: with no living body there is nothing
+		-- moving, and a reader that gates on speed would otherwise keep seeing
+		-- the corpse's last flung reading for the next second.
+		entry.observed_speed = 0
 		return
 	end
 	const position = root.Position
@@ -172,6 +220,11 @@ function sample_movement(entry: Entry, player: Player, dt: number)
 	end
 	const offset = position - last
 	const flat = Vector3.new(offset.X, 0, offset.Z).Magnitude
+	-- max(measured, decayed) rather than a plain assignment: a player who is
+	-- moving steadily reads the same either way, and the difference is the
+	-- sample where they stop dead -- a rule reading this mid-stop should still
+	-- see the speed they were carrying a moment ago, not 0.
+	entry.observed_speed = math.max(offset.Magnitude / dt, entry.observed_speed * SPEED_MEMORY)
 	const limit = math.max(SPEED_LIMIT_FLOOR, humanoid.WalkSpeed * SPEED_LIMIT_SLACK)
 	-- Blink is the FLAT jump against a threshold that scales with the sample.
 	-- Two false-positive classes forced both halves of that sentence:
@@ -216,6 +269,7 @@ function init()
 			last_decay = os.clock(),
 			last_position = nil :: Vector3?,
 			hot_samples = 0,
+			observed_speed = 0,
 			holds = {},
 			intents = {},
 			suspect = false,
@@ -243,5 +297,6 @@ return table.freeze {
 	init = init,
 	note_intent = note_intent,
 	note_hold = note_hold,
+	observed_speed = observed_speed,
 	forgive = forgive,
 }

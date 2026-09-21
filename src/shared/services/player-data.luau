@@ -30,6 +30,20 @@ end
 
 if RunService:IsClient() then
 	const atom = charm.atom(nil :: Schema?)
+
+	-- `Players.LocalPlayer` is NIL for the first moments of a client's life, and
+	-- this module is required early enough to land in them -- the key would be
+	-- built from nil, the registration would throw, and the player's own data
+	-- would never sync for the whole session. It is not deterministic, which is
+	-- the worst shape for it: it misses in Studio and hits on a cold join.
+	--
+	-- Yielding here is safe in a way it would not be for a remote handler:
+	-- registering after the first sync request fires the registry's
+	-- late-register hook, which `sync.client` answers by asking the server for a
+	-- fresh snapshot. A late registration costs a round trip, not the data.
+	while not Players.LocalPlayer do
+		task.wait()
+	end
 	sync_registry.register(key_for(Players.LocalPlayer), atom)
 
 	return table.freeze {

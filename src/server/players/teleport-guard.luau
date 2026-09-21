@@ -116,6 +116,19 @@ function strand_deadline(grace: number): number
 	return attempts * retry_delay + grace
 end
 
+-- Has this player been sent somewhere and not yet arrived, failed out, or left?
+--
+-- The state was already here -- `sent_with` is cleared by `forget` on every
+-- terminal path -- and every caller that wanted it was reaching for a flag of
+-- its own beside the call to `send`. Two copies of "is this player leaving"
+-- disagree the moment one of the terminal paths is added to, so the answer
+-- belongs to whoever owns the state. Read it before anything that must not act
+-- on a player mid-departure: respawning them, restoring their save, counting
+-- them into a round.
+function in_flight(player: Player): boolean
+	return sent_with[player] ~= nil
+end
+
 local started = false
 function init()
 	if started then
@@ -169,4 +182,5 @@ return table.freeze {
 	record = record,
 	send = send,
 	strand_deadline = strand_deadline,
+	in_flight = in_flight,
 }

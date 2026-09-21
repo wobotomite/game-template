@@ -62,14 +62,28 @@ export type Config = {
 	timeout: number?,
 	-- How often to re-check.
 	interval: number?,
+	-- EARLY OPEN. Seconds of quiet after which "everyone who is actually here is
+	-- ready" counts as the whole party. Unset means never: the gate then waits
+	-- out the full timeout for a player who may not be coming. See
+	-- `wait_for_party`.
+	stall: number?,
 }
 
 local expected_fn: (() -> number)? = nil
 local on_progress: ((number, number) -> ())? = nil
 local timeout = 30
 local interval = 0.25
+-- Infinity, so the early open is OFF until a game asks for it. The gate's
+-- guarantee is "everybody who was expected got in"; trading that for a faster
+-- start is the caller's call to make, not a default to inherit.
+local stall = math.huge
 
 const ready_players: { [Player]: true } = {}
+
+-- When the roster last grew. Compared against `stall` below, so a player
+-- arriving restarts the quiet period and cannot be left behind by an early
+-- open that was already halfway through deciding.
+local last_arrival = os.clock()
 
 local started = false
 local function ensure_cleanup()
@@ -80,6 +94,7 @@ local function ensure_cleanup()
 	-- A player who leaves is neither ready nor expected; leaving their entry
 	-- behind would let a later join inherit someone else's readiness.
 	observe_players(function(player: Player): () -> ()
+		last_arrival = os.clock()
 		return function()
 			ready_players[player] = nil
 		end
@@ -91,6 +106,7 @@ function configure(config: Config)
 	on_progress = config.on_progress or on_progress
 	timeout = config.timeout or timeout
 	interval = config.interval or interval
+	stall = config.stall or stall
 	ensure_cleanup()
 end
 
@@ -133,6 +149,24 @@ function wait_for_party(): boolean
 		if on_progress then
 			on_progress(ready, expected)
 		end
+
+		-- THE EARLY OPEN. `expected` is a prediction -- the party size the
+		-- teleport promised -- and it is routinely wrong by one: somebody
+		-- declined the teleport, or crashed on the way over. Waiting the full
+		-- failsafe for a player who is not coming costs every other player that
+		-- whole timeout, which is the common case of a gate feeling broken.
+		--
+		-- So: if everyone who is ACTUALLY IN THIS SERVER is ready and nobody new
+		-- has joined for `stall` seconds, treat that as the party. `present > 0`
+		-- keeps an empty server from matching vacuously, the same guard
+		-- `expected > 0` is above. This returns TRUE -- it is a real start, not a
+		-- failsafe -- and a game that needs to tell the two apart should count
+		-- players itself rather than read the return value.
+		const present = #Players:GetPlayers()
+		if present > 0 and ready >= present and os.clock() - last_arrival >= stall then
+			return true
+		end
+
 		task.wait(interval)
 	end
 	warn(`[party-gate] opened on the {timeout}s failsafe with {ready_count()} ready`)
@@ -141,6 +175,9 @@ end
 
 function reset()
 	table.clear(ready_players)
+	-- Otherwise the first poll of the NEXT gate measures quiet since the last
+	-- join of the last one, and opens early on arrivals that already happened.
+	last_arrival = os.clock()
 end
 
 return table.freeze {

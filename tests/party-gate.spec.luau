@@ -102,4 +102,30 @@ do
 	h.check(`on_progress is called while waiting ({reports} times)`, reports >= 2)
 end
 
+do
+	-- THE EARLY OPEN'S VACUOUS GUARD. `stall` opens the gate once everyone
+	-- PRESENT is ready and nobody new has arrived for that long -- which, in an
+	-- empty server, is trivially true of nobody. `present > 0` is what stops it,
+	-- and without that guard this configuration would open on the first poll
+	-- with zero players ready and report a completed party.
+	--
+	-- The other half of the early open -- that it fires when players ARE present
+	-- and ready -- needs `Players:GetPlayers()` to report a roster, which a
+	-- stubbed service cannot. Same blind spot as `ready_count` above, and the
+	-- same honest answer: what is testable here is the guard.
+	gate.reset()
+	gate.configure {
+		expected = function()
+			return 4
+		end,
+		timeout = 0.3,
+		interval = 0.05,
+		stall = 0.01,
+	}
+	local began = os.clock()
+	local completed = gate.wait_for_party()
+	h.check("an empty server does not satisfy the stall early-open", os.clock() - began >= 0.25)
+	h.equals("so the gate still opens on the failsafe", completed, false)
+end
+
 h.done()

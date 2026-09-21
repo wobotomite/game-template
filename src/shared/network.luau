@@ -1,4 +1,5 @@
 const ReplicatedStorage = game:GetService "ReplicatedStorage"
+const RunService = game:GetService "RunService"
 
 const sendbufs = require(ReplicatedStorage.Packages.sendbufs)
 const REMOTES = {
@@ -29,6 +30,30 @@ const REMOTES = {
 			step = sendbufs.schema.u8,
 		}),
 	},
+	-- STUDIO ONLY, and `nil` everywhere else, so the remote that runs debug
+	-- commands does not exist in a published place at all. A `RunService:IsStudio()`
+	-- check inside the handler is a check somebody can forget or a payload
+	-- somebody can reach; an event that was never declared cannot be fired.
+	--
+	-- Both realms evaluate this line, and in any one session they agree --
+	-- Studio Play is Studio on both sides, a live server is neither. It is
+	-- declared LAST for the ordering note above: a group that is sometimes
+	-- absent must not sit in front of events whose ids would then shift with it.
+	--
+	-- Handled by `src/server/debug-commands.server.luau`.
+	debug = if RunService:IsStudio()
+		then table.freeze {
+			command = sendbufs.event(sendbufs.schema.struct {
+				name = sendbufs.schema.str,
+				-- One number and one string, whatever the command wants them to
+				-- mean: `f64` rather than an integer type because a command may
+				-- want a fraction, and the handler checks the value is finite
+				-- before any command sees it.
+				value = sendbufs.schema.f64,
+				text = sendbufs.schema.str,
+			}),
+		}
+		else nil,
 }
 
 table.freeze(REMOTES)
