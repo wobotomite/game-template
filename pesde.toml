@@ -17,6 +17,13 @@ sourcemap_generator = ".pesde/scripts/sourcemap_generator.luau"
 [dev_dependencies]
 scripts = { name = "pesde/scripts_rojo", version = "^0.2.0", target = "lune" }
 rojo = { name = "pesde/rojo", version = "^7.5.1", target = "lune" }
+# Service tests only. Jest Roblox is published to wally, not to the pesde index,
+# so it arrives through the wally index like the UI packages do. The aliases are
+# the names Roblox's own docs use, so an example pasted from
+# https://roblox.github.io/jest-roblox/ resolves unchanged.
+# See docs/testing-services.md.
+jest = { wally = "roblox/jest", version = "3.20.1" }
+JestGlobals = { wally = "roblox/jest-globals", version = "^3.20.0" }
 
 [engines]
 pesde = "^0.7.0"

@@ -12,3 +12,17 @@ StyLua = "JohnnyMorganz/StyLua@2.5.2"
 luau-lsp = "JohnnyMorganz/luau-lsp@1.68.1"
 lune = "lune-org/lune@0.10.5"
 pesde = "pesde-pkg/pesde@0.7.3+registry.0.2.3"
+# Runs the service-test place (see docs/testing-services.md). Jest Roblox only
+# runs inside Roblox, so this is what lets `lune run scripts/run-jest` finish
+# without a human clicking Play. 0.3.0 is the only release there has ever been
+# (2020-07-20, https://github.com/rojo-rbx/run-in-roblox/releases).
+#
+# It is THIS REPO'S choice, not upstream's: Roblox names two ways to run Jest
+# Roblox -- Studio, and Open Cloud Luau Execution for CI
+# (https://roblox.github.io/jest-roblox/) -- and run-in-roblox is simply the
+# local way to get the Studio one without a human in it.
+#
+# It OPENS ROBLOX STUDIO and takes it over for the duration. Nothing else in
+# this repo needs it, and `lune run scripts/run-jest --build-only` stops short
+# of it, so a checkout that never runs a service test never has to install it.
+run-in-roblox = "rojo-rbx/run-in-roblox@0.3.0"
