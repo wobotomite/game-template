@@ -42,7 +42,19 @@ const STRINGS = {
 
 	-- DEBUG. What the Studio-only commands report back. Never seen by a player,
 	-- kept here so the debug menu and the command script agree on the text.
-	debug = {},
+	--
+	-- Prefixed DEBUG: on purpose. These come back through the same toast a real
+	-- alert uses, and in a Studio session full of them the one thing you want to
+	-- know at a glance is which lines are the game talking and which are you.
+	debug = {
+		-- A command that writes to the save reports the write, not the intent:
+		-- a silent failure here looks exactly like a command that did nothing,
+		-- and the usual cause is Studio API access being off.
+		SAVE_FAILED = "DEBUG: SAVE FAILED -- SEE THE OUTPUT WINDOW",
+		DATA_WIPED = "DEBUG: SAVE WIPED TO A FRESH ONE",
+		GOD_ON = "DEBUG: GOD MODE ON",
+		GOD_OFF = "DEBUG: GOD MODE OFF",
+	},
 
 	-- COMMERCE. Product and pass names and descriptions, by the same KEY as
 	-- `settings.commerce.PRODUCTS`, and the line shown when a purchase is granted.

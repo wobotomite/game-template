@@ -84,7 +84,16 @@ const SETTINGS = {
 	-- exist there (`src/shared/network.luau`, the `debug` group).
 	--
 	-- Read by the debug command script and the debug menu.
-	debug = {},
+	debug = {
+		-- How often god mode tops a character's health back up, in seconds.
+		--
+		-- A POLL, not a `Humanoid.HealthChanged` handler, because damage is not
+		-- the only way to die: a fall, a void, or anything that sets Health to 0
+		-- outright kills between two of the events you would have hooked. A
+		-- quarter second is short enough that nothing in a test survives long
+		-- enough to matter and long enough that the loop is free.
+		GOD_PERIOD = 0.25,
+	},
 
 	-- CHARACTER. Rig and ragdoll numbers shared by the server and client halves of
 	-- character setup, so a death looks the same from both sides of the wire.
