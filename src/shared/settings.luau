@@ -483,9 +483,14 @@ const SETTINGS = {
 		},
 
 		-- TOUCH. Sizes for the on-screen buttons in `src/client/input`, and the
-		-- thresholds the gesture recogniser there classifies a touch by. Sizes
-		-- are design pixels scaled through `util/ui/hooks/px`, the same as
-		-- `ui.METRICS`.
+		-- thresholds the gesture recogniser there classifies a touch by.
+		--
+		-- REAL VIEWPORT PIXELS, not design pixels -- these are the one group of
+		-- sizes in the file that is NOT scaled through `util/ui/hooks/px` the
+		-- way `ui.METRICS` is. A thumb is the same size on every phone, so a
+		-- touch target that shrank with the viewport would be hardest to hit on
+		-- exactly the smallest screens, and a drift threshold that shrank with
+		-- it would call a deliberate drag a tap.
 		TOUCH = {
 			-- A touch button's square, and the gap between buttons. 54 design
 			-- px is about 9 mm on a phone: the smallest square still reliably
@@ -508,9 +513,9 @@ const SETTINGS = {
 			DEADZONE = 0.08,
 
 			-- What separates a TAP from a drag or a hold: a touch that lifts
-			-- within TAP_SECONDS, never drifted further than TAP_DRIFT design
-			-- pixels from where it landed, and did not turn the camera by more
-			-- than TAP_CAMERA_DEGREES. The camera test is the one that matters:
+			-- within TAP_SECONDS, never drifted further than TAP_DRIFT pixels
+			-- from where it landed, and did not turn the camera by more than
+			-- TAP_CAMERA_DEGREES. The camera test is the one that matters:
 			-- on a phone the whole screen is also the look control, so a short
 			-- flick to look around is otherwise indistinguishable from a tap on
 			-- the world.
