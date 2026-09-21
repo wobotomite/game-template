@@ -4,7 +4,16 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedFirst": {
-      "$path": "src/replicated-first"
+      "$path": "src/replicated-first",
+      "TransitionSettings": {
+        "$path": "src/shared/settings.luau"
+      },
+      "TransitionStrings": {
+        "$path": "src/shared/strings.luau"
+      },
+      "TransitionAssets": {
+        "$path": "src/shared/assets.luau"
+      }
     },
     "ReplicatedStorage": {
       "Shared": {

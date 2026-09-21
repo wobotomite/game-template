@@ -57,7 +57,13 @@ const STRINGS = {
 
 	-- LOADING. The cover shown from ReplicatedFirst. Read through the
 	-- `TransitionStrings` alias in `default.project.json`; see `settings.transition`.
-	loading = {},
+	loading = {
+		-- The one line on the cover. It is shown before anything about the
+		-- session is known -- no place, no profile, no character -- so it cannot
+		-- say anything specific and should not try. A game replaces it with its
+		-- own name, or drives it per-stage through `transition-screen.set`.
+		TITLE = "Loading",
+	},
 
 	-- UI. Words the widget kit itself shows: confirm, cancel, close, hold to
 	-- confirm. A feature's own copy goes in that feature's section.

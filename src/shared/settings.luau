@@ -263,7 +263,79 @@ const SETTINGS = {
 	-- maps this same file into ReplicatedFirst so the cover can read it before
 	-- ReplicatedStorage has replicated. That is a SECOND ModuleScript instance: the
 	-- values are equal, the tables are not the same objects.
-	transition = {},
+	transition = {
+		-- Above every other ScreenGui. The cover's whole job is to be the ONLY
+		-- thing on screen, and a DisplayOrder a game picks for a HUD layer is
+		-- exactly what would otherwise draw a half-built interface in front of
+		-- it. Four digits so there is room to sit a game's own overlays under it.
+		DISPLAY_ORDER = 1300,
+
+		-- THE COVER COMES DOWN NO MATTER WHAT. It is dismissed by the client boot
+		-- script (see DISMISS_ATTRIBUTE), and a boot that never finishes -- a
+		-- profile that will not load, an error thrown before the hand-off -- would
+		-- otherwise leave the player looking at a title card forever, with no way
+		-- to tell that from a slow connection. After this the cover removes
+		-- itself and the player at least sees the game, broken or not.
+		FAILSAFE_SECONDS = 30,
+
+		-- How long the cover takes to fade out once it is dismissed. Long enough
+		-- to read as a transition rather than a cut, short enough that nobody is
+		-- waiting on it.
+		FADE_SECONDS = 0.6,
+
+		-- THE INDETERMINATE BAR. With no fraction to show, the fill sweeps across
+		-- the track on a loop: one pass every PULSE_SECONDS, the fill SIGNAL_WIDTH
+		-- of the track wide. It says "still working" and promises nothing, which
+		-- is the honest thing to draw when the boot has no progress number -- a
+		-- bar that pretends to be at 40% and then sits there is worse than no bar.
+		PULSE_SECONDS = 2.4,
+		SIGNAL_WIDTH = 0.22,
+
+		-- THE CONTENT BLOCK is authored at exactly this size in pixels and then
+		-- scaled to fit, rather than laid out in scale units. Offsets keep the
+		-- title and the bar in proportion to each other on every screen; a scale
+		-- layout stretches the gap between them on a wide monitor and crushes it
+		-- on a phone. VIEW_MARGIN is the breathing room left around the block, and
+		-- MIN_SCALE the point past which shrinking further would be unreadable --
+		-- below it the block is allowed to overflow instead.
+		WIDTH = 620,
+		HEIGHT = 106,
+		VIEW_MARGIN = 40,
+		MIN_SCALE = 0.35,
+
+		-- Layout inside that block, top-left origin. The title band is
+		-- TITLE_SIZE + RULE_GAP tall, which leaves RULE_GAP of air under the text
+		-- before the bar at BAR_Y. BAR_Y + BAR_HEIGHT is HEIGHT: the bar is the
+		-- bottom edge of the block.
+		TITLE_Y = 0,
+		TITLE_SIZE = 48,
+		RULE_GAP = 28,
+		BAR_Y = 100,
+		BAR_HEIGHT = 6,
+
+		-- COLOURS, AND THEY ARE A PLACEHOLDER. The cover is the first thing a
+		-- player sees and it has to look like something before the game has a
+		-- palette -- and it deliberately does NOT read `settings.ui`, because the
+		-- widget kit's theme is a game's own look and the cover has to draw
+		-- before any of it exists. So these four are picked for contrast and
+		-- nothing else: a dark ground, light text, a track dark enough to read as
+		-- empty, and a fill that is the same ink as the title because a template
+		-- has no brand colour. This is the first block a game should overwrite.
+		GROUND = Color3.fromRGB(16, 16, 18),
+		INK = Color3.fromRGB(235, 235, 238),
+		TRACK = Color3.fromRGB(42, 42, 48),
+		ACCENT = Color3.fromRGB(235, 235, 238),
+
+		-- HOW THE TWO SCRIPTS TALK. The cover lives in ReplicatedFirst and the
+		-- boot that dismisses it lives in the client tree; they are separate
+		-- scripts, started at different times, sharing no module state -- which is
+		-- the whole point of ReplicatedFirst, and the reason the cover can draw
+		-- before ReplicatedStorage has replicated. An attribute on the
+		-- ReplicatedFirst service is the one channel both can reach without either
+		-- having to exist yet: the boot sets it whenever it gets there, and the
+		-- cover reads it once and then listens, so neither order is a race.
+		DISMISS_ATTRIBUTE = "LoadingCoverDismissed",
+	},
 
 	-- EFFECTS. Defaults for the shared effect primitives under
 	-- `src/effects/shared` -- particle bursts, rings, display ghosts.
