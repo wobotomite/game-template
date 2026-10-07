@@ -35,14 +35,9 @@ local jest = jest_globals.jest
 -- real lyra player store and the `changedCallbacks` that push into
 -- `player-data`. None of that is what `award` is being asked about.
 --
--- `server-network` is THE WIRE, and it is the one that matters. Requiring it
--- runs `sendbufs.create_server`, which parents `_SB_RELIABLE`,
--- `_SB_UNRELIABLE` and `_SB_FUNCTION` into ReplicatedStorage with NO dedupe. A
--- second set does not error -- it silently kills the client sync for the whole
--- session, and in Studio it gets SAVED into the place file and kills every
--- session after it too. See the comment at the top of
--- `src/server/net/server-network.luau`. A test must never be the thing that
--- creates them, which is most of the reason this file mocks.
+-- `server-network` is THE WIRE. Requiring it runs `sendbufs.create_server` and
+-- stands a live transport up in the test place, when what a case wants is a
+-- record of what `award` sent: the stand-in below keeps every alert payload.
 --
 -- `jest.mock` takes the module INSTANCE, and it is keyed on that instance
 -- alone: `Runtime_private:_shouldMock` sets `local moduleID = moduleName` and
@@ -56,7 +51,7 @@ local award_module = ServerScriptService.Server.data.award
 -- `ReplicatedStorage.Shared.services.alert` is deliberately left REAL. It is
 -- the module that actually reaches the wire, and it reaches it LAZILY --
 -- `alert.send_to` requires `server-network` INSIDE the call, not at module
--- scope. Leaving it real is what makes the last test in this file mean
+-- scope. Leaving it real is what makes the alert test in this file mean
 -- something: it proves the interception covers a transitive, deferred require,
 -- not just the two requires written above.
 
@@ -143,19 +138,6 @@ describe("award", function()
 		-- does not break them.
 		expect(alerts[1].message).toMatch "100"
 		expect(alerts[1].message).toMatch "Coins"
-	end)
-
-	it("never builds the sendbufs remotes", function()
-		local award = require(award_module)
-		award(FAKE_PLAYER, "currency/coins/100")
-
-		-- THE POINT OF THE MOCKS, asserted rather than assumed. The moment the
-		-- interception stops reaching `alert.send_to`'s deferred require, this
-		-- is the line that says so -- before a stray remote set is saved into
-		-- somebody's place file.
-		for _, name in { "_SB_RELIABLE", "_SB_UNRELIABLE", "_SB_FUNCTION" } do
-			expect(ReplicatedStorage:FindFirstChild(name)).toBeNil()
-		end
 	end)
 end)
 

@@ -5,11 +5,14 @@ build their side from that same table (`client-network`, `server-network`).
 Everything below is a property of that arrangement plus sendbufs, and every item
 is something that produced a real bug rather than a hypothetical one.
 
-## sendbufs has no queue
+## The server has no queue
 
-**An event fired before its handler is connected is discarded, silently.** There
-is no buffering and no retry. This has two faces, and they pull in opposite
-directions:
+**On the server, an event fired before its handler is connected is discarded,
+silently.** There is no buffering and no retry. (The client differs since
+sendbufs 1.1.3: up to 256 reliable messages per event that arrive before
+anything connects are held and handed, deferred, to the first listener, with a
+red error at the cap; unreliable ones are still dropped.) This has two faces,
+and they pull in opposite directions:
 
 **As a hazard.** Anything fired exactly once, with no retry, is a coin flip
 against boot order. A place script that creates the remotes and then *yields* —

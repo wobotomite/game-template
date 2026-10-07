@@ -41,7 +41,7 @@ const LIMP_STATES = {
 }
 
 -- THE JOINT LIMITS are `settings.character.RAGDOLL_JOINT`, with the reasoning
--- for the three groups written beside the numbers.
+-- for the axes and the signs written beside the numbers.
 const RAGDOLL_JOINT = require(ReplicatedStorage.Shared.settings).character.RAGDOLL_JOINT
 
 -- util/ragdolls names every socket it builds after the Motor6D it stands in
@@ -50,36 +50,31 @@ const RAGDOLL_JOINT = require(ReplicatedStorage.Shared.settings).character.RAGDO
 -- for its own reasons -- a grab, a tether, a held prop.
 const SOCKET_PREFIX = "ragdoll-ball-socket ->"
 
--- Which group a socket belongs to, read off the joint it replaced. The socket
--- is parented to that Motor6D, so the joint's name is one hop away.
-function joint_limits(socket: BallSocketConstraint): (number, number)
+-- Which row a socket reads, off the joint it replaced. The socket is parented
+-- to that Motor6D, so the joint's name is one hop away, and both sides of the
+-- body share a row: "LeftElbow" and "RightElbow" are both `Elbow`.
+--
+-- ONLY THE R15 SPELLING IS STRIPPED. R6 writes "Left Shoulder" with a space,
+-- the space survives the strip, and the name misses the table. That is the
+-- intent: see the note on `FALLBACK` in settings for why an R6 joint must not
+-- borrow an R15 range.
+function joint_limits(socket: BallSocketConstraint)
 	const motor = socket.Parent
 	const name = if motor then motor.Name else ""
-	-- `Root`/`RootJoint` is the R15/R6 spelling of the same joint; `Waist` is
-	-- the second spine joint R15 adds.
-	if name == "Root" or name == "RootJoint" or name == "Waist" then
-		return RAGDOLL_JOINT.TORSO_TWIST, RAGDOLL_JOINT.TORSO_SWING
-	end
-	if name == "Neck" then
-		-- Attachment1 is the far side of the joint. On a stock rig that is the
-		-- Head, but a rig with something else up there (a helmet root, a
-		-- swapped-in prop) gets the general neck figure rather than the head's
-		-- tighter one -- the point of the branch is the head specifically.
-		const attachment = socket.Attachment1
-		const part = if attachment then attachment.Parent else nil
-		const swing = if part and part.Name == "Head" then RAGDOLL_JOINT.HEAD_SWING else RAGDOLL_JOINT.NECK_SWING
-		return RAGDOLL_JOINT.NECK_TWIST, swing
-	end
-	return RAGDOLL_JOINT.LIMB_TWIST, RAGDOLL_JOINT.LIMB_SWING
+	const joint = (string.gsub(string.gsub(name, "^Left", ""), "^Right", ""))
+	return RAGDOLL_JOINT.LIMITS[joint] or RAGDOLL_JOINT.FALLBACK
 end
 
+-- THE ORDER OF THESE WRITES IS LOAD-BEARING. `TwistLimitsEnabled` written while
+-- `LimitsEnabled` is false is dropped by the engine, silently, and does not
+-- come back when limits are enabled afterwards. Cone first, then twist.
 function limit_socket(socket: BallSocketConstraint)
-	const twist, swing = joint_limits(socket)
+	const limits = joint_limits(socket)
 	socket.LimitsEnabled = true
-	socket.UpperAngle = swing
+	socket.UpperAngle = limits.SWING
 	socket.TwistLimitsEnabled = true
-	socket.TwistLowerAngle = -twist
-	socket.TwistUpperAngle = twist
+	socket.TwistLowerAngle = limits.LOWER
+	socket.TwistUpperAngle = limits.UPPER
 end
 
 function is_ragdoll_socket(instance: Instance): boolean

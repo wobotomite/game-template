@@ -218,7 +218,6 @@ run to ground once, file by file; this table is that audit, so nobody redoes it.
 | `src/util/numbers/bezier`, `src/util/colors/color-gradient`, `src/util/strings/generate-id`, `src/util/constructors/shared-ctor` | narrowing and generic-variance noise (`number?` not narrowed by `x = x or 16`) |
 | `src/util/iterators/map-table`, `src/util/iterators/filter-table` | `Expected to return 2 values` — `return nil` is the standard generic-for stop signal |
 | `src/util/tween/init`, `src/util/extra-features/cutscene-player/init` | `Unknown global` for bare `function`s defined lower in the file — **verified benign by the test below, not assumed** |
-| `src/util/ui/hooks/use-motion` | `Unknown type 'Ripple.*'` — the package's types do not resolve through its link file |
 | `src/util/observers/observe-character`, `src/util/colors/lerp-cieluv`, `src/util/ui/hooks/px` | a downcast, a deliberate shadow, and a commented-out constant |
 
 **The count moves without anything changing.** A util diagnostic is re-reported
@@ -242,6 +241,21 @@ The audit that produced the table above found **two real bugs** among the noise:
 - `util/extra-features/change-lighting` kept a weak-keyed table of Instances —
   the class that froze corpses upright in `util/ragdolls`. Nothing reads it yet,
   which is the only reason it had not bitten.
+
+**And it misfiled a third.** This table used to carry a row for
+`util/ui/hooks/use-motion`: `Unknown type 'Ripple.*'`, classed as "the package's
+types do not resolve through its link file". They resolve fine. The link file
+re-exports exactly the four types ripple 0.6 exports, and `MotionOptions` is not
+one of them — the annotation named a type that does not exist. Nine lines below
+it the hook called `motion:onChange`, which does not exist either (the listeners
+are `onStep` and `onComplete`), so `use-motion` threw for every caller, and
+`use-tween` — already "fixed" once by rebuilding it on `use-motion` — and the
+`carousel` template went with it. Two things kept it quiet. Under `nonstrict`
+the analyzer says nothing about a method missing from a package's table; the
+same line under `--!strict` reports `Key 'onChange' not found in table
+'Motion<T>'` (checked both ways). And once a row is filed as toolchain noise,
+nobody reads the file it names. **A row in this table is a claim that somebody
+read the code, not only the diagnostic.**
 
 Do not skip reading the util *code* because its diagnostics are noise. An
 earlier audit of the same directory found two different real bugs

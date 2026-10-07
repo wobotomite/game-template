@@ -52,20 +52,6 @@ about the numbers inside, and the validators exist for the gap:
 `tests/validate.spec.luau` pins the arithmetic, including the boundary burst
 the old window got wrong.
 
-## One set of remotes, or none
-
-`sendbufs.create_server` parents `_SB_RELIABLE`, `_SB_UNRELIABLE` and
-`_SB_FUNCTION` into ReplicatedStorage with no dedupe, and the client binds by
-name with `WaitForChild`, which returns the **first** match. A set saved into
-the place file plus a set created at run time is a client bound to the dead
-one: no snapshot, no panels, no error.
-
-`src/server/net/server-network.luau` destroys strays with a warn before it
-creates its own. That is a backstop for a place file that already carries them;
-it is not a licence to make them. Nothing outside the live boot path should
-ever require the network modules or call `create_server` / `create_client` —
-not a plugin, not the command bar, not a test harness.
-
 ## The sync handshake is a module
 
 `src/server/net/sync.luau` is the charm-sync registry's server half, and it is

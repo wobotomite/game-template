@@ -143,11 +143,8 @@ Three things are added, and only these three:
    Studio says which one it is.
 
 Why it matters that no boot script runs: the boot scripts are what stand the
-network up, and standing the network up means `sendbufs.create_server` — which
-is the one thing a test run must never do (next section). It would also make the
-assertion in `tests/services/award.test.luau` that the remotes do not exist
-meaningless, since the check would be measuring the test place's own boot rather
-than the code under test.
+network, the datastore and every service up. A test place that booted them
+would be measuring its own boot rather than the code under test.
 
 The generated entry point, `build/jest/run.lua`, is generated for the same
 reason the project file is: every path in it is a fact the runner already owns.
@@ -162,18 +159,12 @@ rejects, the entry point sees `Rejected`, and the run is red. **The one option
 that turns that into a green run is `passWithNoTests`. Never set it**: a
 `testMatch` that matches nothing must stay a failure.
 
-## How a service test avoids the real remotes
+## How a service test replaces the wire
 
-**This is the constraint the rest of the design is shaped around.**
-`sendbufs.create_server` parents `_SB_RELIABLE`, `_SB_UNRELIABLE` and
-`_SB_FUNCTION` into ReplicatedStorage with no dedupe. A second set does not
-error — the client binds by name with `WaitForChild`, takes the first match, and
-the whole game loads with no data and nothing in the log saying why. In Studio
-the stray set gets saved into the place file and does it again next session.
-`docs/network.md` and the header of `src/server/net/server-network.luau` have
-the full account. **Nothing in a test may ever require that module for real.**
-
-The mechanism is `jest.mock`, not a hand-rolled fake:
+A service's sends go through `server-network`, and requiring it for real runs
+`sendbufs.create_server` and stands a live transport up in the test place. A
+case wants a record of what the service sent instead, so the test mocks the
+module. The mechanism is `jest.mock`, not a hand-rolled fake:
 
 ```luau
 jest.resetModules()
@@ -202,8 +193,8 @@ source rather than remembered — `roblox_packages/.pesde/`, package
 `server-network` and the player `datastore`, and deliberately leaves
 `src/shared/services/alert.luau` **real** — `alert.send_to` requires the wire
 *inside the call*, not at module scope, so the interception has to reach a
-transitive **and lazily evaluated** require. Its last case asserts all three
-`_SB_*` names are absent from ReplicatedStorage afterwards.
+transitive **and lazily evaluated** require. Its alert case reads the payload
+off the mocked wire, which is what proves the interception reached that far.
 
 Note the order in that file: `jest.resetModules()` first, then `jest.mock`, then
 `require` the module under test *inside* each case. `resetModules` (line 1490)

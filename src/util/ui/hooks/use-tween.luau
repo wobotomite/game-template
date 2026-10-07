@@ -37,6 +37,13 @@ const use_motion = require(script.Parent["use-motion"])
 -- headlessly, and ripple cannot. So the bug lived in the one blind spot that
 -- check declares. That is the argument for declaring blind spots by name
 -- rather than letting them be implicit.
+--
+-- AND THE FIX WAS NEVER RUN EITHER. Rebuilding this file on `use-motion` moved
+-- it onto a hook with the other half of the same bug: `use-motion` called
+-- `motion:onChange`, which ripple 0.6 does not have (its listeners are `onStep`
+-- and `onComplete`), so this hook went on throwing for every caller after it
+-- was "fixed". Nobody mounted one, so nothing said so. A rework that is not
+-- rendered once is a second draft, not a fix.
 -- ------------------------------------------------------------------------
 
 export type TweenParams = {
@@ -65,12 +72,14 @@ local function use_tween<T>(initial: T, params: TweenParams?): (() -> T, TweenHa
 	-- the first. There is now ONE place that knows how a ripple motion is attached
 	-- to a vide source and torn down.
 	--
-	-- `use_motion` already registers a cleanup that disconnects the onChange and
-	-- stops the motion, and vide runs cleanups in reverse order, so this extra
-	-- one -- registered after -- runs FIRST. That ordering is the reason `destroy`
-	-- can live here at all: destroying a motion that is still started and still
-	-- has a live onChange would be tearing the object out from under its own
-	-- listener. Do not "simplify" by moving the destroy into `use-motion`: that
+	-- `use_motion` already registers a cleanup that disconnects its `onStep`
+	-- listener and stops the motion. vide 0.4 flushes a scope's cleanups in
+	-- REGISTRATION order (`flush_cleanups` walks the list forwards), so that one
+	-- runs first and this one -- registered after -- runs second, against a
+	-- motion that is already stopped and has no live listener. This comment used
+	-- to claim the reverse order. Either order is in fact harmless: `destroy`
+	-- clears the listener tables, and a late disconnect only nils a key in an
+	-- empty one. Do not "simplify" by moving the destroy into `use-motion`: that
 	-- hook hands the raw motion back to callers who may well outlive the scope.
 	const value, motion = use_motion(initial)
 
@@ -82,8 +91,35 @@ local function use_tween<T>(initial: T, params: TweenParams?): (() -> T, TweenHa
 		to = function(goal: T, override: TweenParams?)
 			motion:tween(goal :: any, (override or params) :: any)
 		end,
+		-- `to(immediate(v))`, NOT `motion:set(v)`, even though `set` is the method
+		-- whose name says "jump there". Ripple 0.6's `set` writes `state.value` and
+		-- marks the state incomplete, but it leaves the SOLVER and its goal in
+		-- place, so the next heartbeat hands the old solver a state it thinks is
+		-- still running and it drives the value back to the old goal. MEASURED on
+		-- the real package with the spring solver: spring to 1, let it settle,
+		-- `set(0.5)`, and the next five steps read 0.5726 0.6892 0.7908 0.8652
+		-- 0.9156, incomplete throughout. `set` was never a jump; it was a one-frame
+		-- flicker on the way back to the old goal.
+		--
+		-- READ FROM THE SOURCE, not measured -- the tween solver builds a real
+		-- TweenService tween on a NumberValue, so it cannot be run headlessly --
+		-- the tween path is worse and instant. That solver keeps `complete` and
+		-- `state.destructor` as upvalues; a finished tween leaves `complete` true
+		-- and `set` resets neither, so the very next step takes the `if complete`
+		-- branch and assigns `state.value = goal` outright. Called mid-tween
+		-- instead, the tween is still running and still owned, and the next step
+		-- reads `value.Value` straight back out of it.
+		--
+		-- `immediate` is a real solver that assigns the goal and marks the state
+		-- COMPLETE, and routing through `to` is what makes the difference: `to`
+		-- runs the outgoing `state.destructor` first -- destroying a still-running
+		-- TweenService tween that `set` would have left driving the value -- and
+		-- then installs `immediate` in the old solver's place, so nothing is left
+		-- to animate the value away again. A `set` before any goal was ever set is
+		-- fixed as a side effect: it used to leave the motion permanently
+		-- incomplete.
 		set = function(next_value: T)
-			motion:set(next_value :: any)
+			motion:to(Ripple.immediate(next_value :: any))
 		end,
 		motion = motion,
 	}

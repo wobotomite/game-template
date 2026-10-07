@@ -230,9 +230,11 @@ baseline.** "Delta clean" means no NEW diagnostics, never no defects. Audit the
 baseline once, separately — two such audits here each produced two real bugs
 while every diagnostic around them was noise.
 
-**sendbufs has no queue.** An event fired before its handler connects is
-discarded silently. Connect every handler before anything that can yield, and
-make handshakes retry until something proves the other side heard. The sharpest
+**The sendbufs server has no queue.** An event fired at the server before its
+handler connects is discarded silently (since 1.1.3 the client holds up to 256
+reliable messages per event for its first listener). Connect every handler
+before anything that can yield, and make handshakes retry until something proves
+the other side heard. The sharpest
 version of this: a party gate waiting on a once-fired "I am ready" holds the
 WHOLE party for the full timeout when one such event is lost, with no error,
 nothing in the console, and no failing test — so pair the ordering rule with a

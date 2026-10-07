@@ -42,8 +42,8 @@ scripts/analyze.sh --counts  # per-file diagnostic counts, for diffing
 - **[docs/testing-services.md](docs/testing-services.md)** — the part a Lune spec
   cannot load: server services, tested inside Roblox under Jest Roblox, with the
   real remotes mocked out.
-- **[docs/network.md](docs/network.md)** — sendbufs has no queue, and what
-  follows from that; hardening remote handlers.
+- **[docs/network.md](docs/network.md)** — the sendbufs server has no queue,
+  and what follows from that; hardening remote handlers.
 - **[docs/server-hardening.md](docs/server-hardening.md)** — the sliding-ring
   limiter and the payload validators, the startable atom sync, dressed alerts,
   and the Studio-only debug commands.

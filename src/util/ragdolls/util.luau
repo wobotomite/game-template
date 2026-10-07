@@ -172,8 +172,17 @@ function build_sockets_from_joint_map(jointMap: { Motor6D })
 		const socket = Instance.new "BallSocketConstraint"
 		socket.Name = "ragdoll-ball-socket ->" .. v.Name
 		socket.Enabled = false
-		--socket.LimitsEnabled = true
-		socket.TwistLimitsEnabled = true
+		-- NO LIMIT FLAG IS WRITTEN HERE, and `TwistLimitsEnabled = true` used
+		-- to be. A twist flag written while `LimitsEnabled` is still false is
+		-- dropped by the engine without a word, and writing `true` again once
+		-- limits are on changes nothing -- so a consumer's correctly ordered
+		-- `LimitsEnabled` then `TwistLimitsEnabled` never took, because of the
+		-- line that had already run here. No ragdoll built through this module
+		-- had a working twist limit: the cone held and every joint turned
+		-- freely about its own axis, which reads as bad tuning and survives any
+		-- amount of it. Proved in Studio on a bare two-part rig. Limits are the
+		-- consumer's to set, cone first, on a socket that arrives with both
+		-- flags untouched.
 		socket.Attachment0 = a0
 		socket.Attachment1 = a1
 		socket.Parent = v

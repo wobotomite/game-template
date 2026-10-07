@@ -134,32 +134,54 @@ const SETTINGS = {
 		-- and the head rotates past the shoulders. The limits are what make the same
 		-- simulation produce a pose a player reads as a person.
 		--
-		-- Degrees. `UpperAngle` is the half-angle of the cone the socket may swing
-		-- within; the twist pair is rotation about the joint's own axis, written
-		-- symmetrically (-twist, +twist) because no joint on a stock rig is lopsided.
+		-- Degrees. WHICH AXIS IS WHICH is the part that is easy to get backwards.
+		-- util/ragdolls copies each Motor6D's C0/C1 into the socket's attachments,
+		-- and on an R15 rig those carry no rotation, so a socket's primary axis is
+		-- the part's X axis: the body's left-right line. Rotation about THAT is the
+		-- twist pair, which makes TWIST the joint's hinge -- flexion and extension.
+		-- `SWING` (`UpperAngle`) is the half-angle of the cone for everything else:
+		-- abduction, and spin along the bone.
 		--
-		-- THE THREE GROUPS exist because one number cannot serve all of them. The
-		-- geometry, not a preference:
+		-- So the twist pair is LOPSIDED PER JOINT, because a hinge is. Positive is
+		-- the limb's far end moving FORWARD: a hip, a shoulder and an elbow flex
+		-- positive; a knee flexes negative, and so do a neck and a waist bending
+		-- forward. An elbow is 0..140 and a knee -120..0 for the reason a real one
+		-- is.
 		--
-		--   torso   the least swing, the most twist. Give the waist a limb's 70-degree
-		--           cone and the body folds in half at the middle.
-		--   limbs   the most swing, the least twist. A limb's range IS its swing arc;
-		--           twist along the bone is the axis it barely has.
-		--   neck    tighter than either, and tighter again when the far side of the
-		--           joint is the Head -- which is the part a viewer is looking at, and
-		--           so the one where an impossible angle is unmistakable.
+		-- THESE REPLACED three symmetric groups (torso, limb, neck -- the limbs at
+		-- -20..+20), which looked fine for exactly as long as twist limits silently
+		-- did not apply at all (see `build_sockets_from_joint_map`). Once they did, a
+		-- body dying mid-animation had a shoulder near 96 degrees and a knee near
+		-- -86, far outside that window, and the solver spent about three seconds
+		-- hauling every limb back into it. With the ranges below nothing starts more
+		-- than a few degrees outside its limit, so the body simply goes limp.
 		--
-		-- The figures themselves are carried over unchanged from the game this came
-		-- from; they are a starting point that produced a readable corpse on a stock
-		-- rig, not a derivation. Retune them per game.
+		-- KEYED BY THE R15 JOINT NAME with its `Left`/`Right` prefix removed. An R6
+		-- rig spells its limb joints with a space ("Left Shoulder") and its spine
+		-- "RootJoint", so they miss this table ON PURPOSE and take `FALLBACK`. R6
+		-- joint frames are rotated -- a shoulder's C0 turns the primary axis onto the
+		-- front-back line -- so twist is not the hinge there, and the signs below
+		-- were only ever measured on R15: a flexion range applied to an R6 joint is a
+		-- WRONG limit rather than a loose one. (`Neck` is spelled the same on both
+		-- and does hit the table; its range is near enough symmetric for the frame
+		-- not to matter.) `FALLBACK` is the old symmetric limb figure, and it is also
+		-- what any joint a custom rig adds will get.
+		--
+		-- Measured on a stock R15 rig in the diving game these came from. Retune them
+		-- per game; keep the signs.
 		RAGDOLL_JOINT = {
-			TORSO_TWIST = 45,
-			TORSO_SWING = 35,
-			LIMB_TWIST = 20,
-			LIMB_SWING = 70,
-			NECK_TWIST = 30,
-			NECK_SWING = 30,
-			HEAD_SWING = 25,
+			LIMITS = {
+				Root = { LOWER = -45, UPPER = 45, SWING = 35 },
+				Waist = { LOWER = -35, UPPER = 25, SWING = 25 },
+				Neck = { LOWER = -40, UPPER = 35, SWING = 25 },
+				Shoulder = { LOWER = -50, UPPER = 160, SWING = 75 },
+				Elbow = { LOWER = 0, UPPER = 140, SWING = 15 },
+				Wrist = { LOWER = -50, UPPER = 50, SWING = 20 },
+				Hip = { LOWER = -20, UPPER = 100, SWING = 35 },
+				Knee = { LOWER = -120, UPPER = 0, SWING = 10 },
+				Ankle = { LOWER = -40, UPPER = 20, SWING = 15 },
+			},
+			FALLBACK = { LOWER = -20, UPPER = 20, SWING = 70 },
 		},
 	},
 

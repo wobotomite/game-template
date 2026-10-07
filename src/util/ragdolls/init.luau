@@ -44,6 +44,11 @@ type RagdollObject = {
 	-- not be welded took the whole `init_ragdoll` down with it instead of being
 	-- set up without a root weld and repaired on the next `sync_ragdoll`.
 	root_weld: Weld?,
+	-- The part whose `Anchored` the weld rule is already listening to, so a
+	-- weld REBUILT over the same root (the weld was destroyed, its root was
+	-- not) does not connect a second listener, and one more per repair. See
+	-- `weld_root`.
+	root_watched: BasePart?,
 	character_joints: { Motor6D },
 	ragdoll_joints: { util.SocketMapValue },
 	-- What each of the rig's own parts was in before it went limp, so releasing
@@ -83,7 +88,9 @@ function init_ragdoll(rig: Model)
 	storage[rig] = {
 		rig = rig,
 		colliders = {},
-		root_weld = util.ragdoll_weld_root(rig),
+		-- No `root_weld` yet: the `sync_ragdoll` below makes it through the
+		-- same repair path that rebuilds a destroyed one, so there is ONE place
+		-- a weld is built, watched and switched.
 		character_joints = {},
 		ragdoll_joints = {},
 		part_groups = {},
@@ -93,6 +100,70 @@ function init_ragdoll(rig: Model)
 		storage[rig] = nil
 	end)
 	sync_ragdoll(rig)
+end
+
+-- THE ROOT WELD IS ON ONLY WHILE THE RIG IS LIMP *AND* ITS ROOT IS FREE.
+--
+-- The weld rigidly joins the root part to the pelvis, which is right for a body
+-- that physics is moving: the invisible root rides along with the corpse, so
+-- whatever reads the root's position reads the body's. It is wrong the moment a
+-- game ANCHORS the root and moves it by CFrame -- a corpse carried along a
+-- path, sunk, held on a hook. An anchored part moves in whatever steps its
+-- script writes, the welded pelvis moves in exactly those steps, and every
+-- other limb is interpolated physics hanging off it: the pelvis visibly jitters
+-- ahead of the body it belongs to. Found in the diving game, whose corpses sink
+-- on a 20 Hz step, as "the lower torso jitters ahead".
+--
+-- STANDING DOWN IS ONLY SAFE IF SOMETHING ELSE HOLDS THE PELVIS, hence the
+-- search below. `get_joint_map` sockets the root joint like any other, so
+-- normally the pelvis still hangs from the root by a ball socket and follows it
+-- as physics rather than as a rigid step. But that map SKIPS a joint whose part
+-- neither collides nor answers queries, and a root with `CanQuery` off is an
+-- ordinary thing for a game to have. There the weld is the only thing joining
+-- body to root, and switching it off would drop the corpse out from under an
+-- anchored root -- so it stays on, jitter and all.
+function weld_root(stored: RagdollObject)
+	const weld = stored.root_weld
+	-- `.Parent` as well as nil: `sync_ragdoll` only rebuilds a destroyed weld
+	-- when the rig can carry one, so it is still possible to arrive here
+	-- holding a weld that was detached in between. Writing to a destroyed
+	-- instance is not an error in Roblox -- it is simply lost -- so the guard
+	-- is about not believing the write landed, rather than about avoiding a
+	-- throw.
+	if not weld or not weld.Parent then
+		return
+	end
+	const root = weld.Part0
+	local socketed = false
+	if root and root.Anchored then
+		for i, v in stored.ragdoll_joints do
+			if v.parent.Part0 == root and v.parent.Part1 == weld.Part1 then
+				socketed = true
+				break
+			end
+		end
+	end
+	weld.Enabled = stored.is_ragdolled and not socketed
+end
+
+-- The rule above reads `Anchored`, so it has to be re-run when that changes: a
+-- game anchors a corpse's root AFTER it has gone limp, which is after the last
+-- `set_ragdoll` that would have evaluated it.
+--
+-- Nothing disconnects this. The signal belongs to the root part, a character's
+-- parts are destroyed with it, and Destroy drops the connections -- the same
+-- release `storage` leans on. A listener that outlives its weld finds no
+-- `weld.Parent` and does nothing.
+function watch_root(stored: RagdollObject)
+	const weld = stored.root_weld
+	const root = if weld then weld.Part0 else nil
+	if root == nil or root == stored.root_watched then
+		return
+	end
+	stored.root_watched = root
+	root:GetPropertyChangedSignal("Anchored"):Connect(function()
+		weld_root(stored)
+	end)
 end
 
 -- Bring a built ragdoll back in line with the rig as it exists RIGHT NOW:
@@ -158,11 +229,11 @@ function sync_ragdoll(rig: Model)
 	-- actually carry one.
 	const weld = stored.root_weld
 	if not weld or not weld.Parent then
-		const rebuilt = util.ragdoll_weld_root(rig)
-		if rebuilt then
-			rebuilt.Enabled = stored.is_ragdolled
-		end
-		stored.root_weld = rebuilt
+		stored.root_weld = util.ragdoll_weld_root(rig)
+		watch_root(stored)
+		-- Not `Enabled = is_ragdolled`: a weld rebuilt mid-ragdoll over a root
+		-- the game has anchored must come back OFF.
+		weld_root(stored)
 	end
 end
 
@@ -199,16 +270,9 @@ function set_ragdoll(rig: Model, val: boolean)
 		end
 		table.clear(stored.part_groups)
 	end
-	-- `.Parent` as well as nil: `sync_ragdoll` above only rebuilds a destroyed
-	-- weld when the rig can carry one, so it is still possible to arrive here
-	-- holding a weld that was detached in between. Writing to a destroyed
-	-- instance is not an error in Roblox -- it is simply lost -- so the guard
-	-- is about not believing the write landed, rather than about avoiding a
-	-- throw.
-	const root_weld = stored.root_weld
-	if root_weld and root_weld.Parent then
-		root_weld.Enabled = val
-	end
+	-- Through the rule rather than `Enabled = val`: limp is necessary for the
+	-- weld, not sufficient.
+	weld_root(stored)
 	for i, v in stored.ragdoll_joints do
 		if not v.a0.Parent or not v.a1.Parent then
 			continue

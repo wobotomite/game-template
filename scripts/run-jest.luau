@@ -54,11 +54,9 @@ local ENTRY_FILE = `{BUILD_DIR}/run.lua`
 -- NO BOOT SCRIPT MAY RUN IN THE TEST PLACE. Rojo turns a `.server.luau` into a
 -- Script that runs the moment the place opens, so a test place built straight
 -- from the game project boots the whole game around the test run -- and the
--- boot scripts are what stand the network up, which means
--- `sendbufs.create_server` and the three `_SB_*` remotes parented into
--- ReplicatedStorage. That is the one thing a service test must never cause (see
--- docs/network.md), and it would also make the assertion in
--- `tests/services/award.test.luau` that the remotes do not exist meaningless.
+-- boot scripts are what stand the network, the datastore and every service up.
+-- A test run should load the modules under test and nothing else, or it is
+-- measuring the game's boot instead of the code it names.
 --
 -- It takes TWO mechanisms, because Rojo reaches an `init.server.luau` by a
 -- different route than the rest.

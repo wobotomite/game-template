@@ -28,8 +28,9 @@ const fatal = require(script.boot.fatal)
 fatal.guard("server-boot", function()
 	-- THE ATOM HANDSHAKE, before anything below can register an atom or yield.
 	-- `start()` only connects `request_sync`, so it cannot fail the way the
-	-- datastore can, and sendbufs has no queue: a client that asks before this
-	-- line has run is never answered. See `src/server/net/sync.luau`.
+	-- datastore can, and the server side of sendbufs has no queue: a client
+	-- that asks before this line has run is never answered. See
+	-- `src/server/net/sync.luau`.
 	require(script.net.sync).start()
 
 	-- BEFORE EVERY SERVICE. Every service below either reads a save or writes one, and
